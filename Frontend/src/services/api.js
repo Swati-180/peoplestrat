@@ -43,3 +43,19 @@ export const fetchCurrentUser = () => api.get("/auth/me");
 // ─── Analytics APIs ────────────────────────────
 export const fetchWorkforceSummary = () => api.get("/analytics/workforce-summary");
 export const fetchSkillGaps = () => api.get("/analytics/skill-gaps");
+
+// ─── Succession Planning APIs ────────────────────
+export const fetchCriticalRoles = () => api.get("/succession/roles");
+export const fetchSuccessionPlan = (targetRoleId) => api.get(`/succession/plan/${targetRoleId}`);
+export const predictSuccessors = (targetRoleId) => api.post(`/succession/plan/${targetRoleId}/predict`);
+export const updateSuccessionCandidate = (targetRoleId, data) => api.put(`/succession/plan/${targetRoleId}/candidate`, data);
+
+// ─── Leadership Pipeline APIs ────────────────────
+export const fetchPipelineLeaders = () => api.get("/pipeline/leaders");
+export const predictPipelineStage = (employeeId) => api.post(`/pipeline/${employeeId}/predict`);
+export const updatePipelineStage = (employeeId, data) => api.put(`/pipeline/${employeeId}/stage`, data);
+
+// ─── Flight Risk APIs (Analysis) ─────────────────
+export const getFlightRisk = (employeeId) => api.get(`/analysis/flight-risk/${employeeId}`);
+export const predictFlightRisk = (employeeId) => api.post(`/analysis/predict-flight-risk/${employeeId}`);
+

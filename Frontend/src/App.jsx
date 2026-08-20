@@ -37,7 +37,9 @@ import Settings from "./pages/Settings.jsx";
 import Documentation from "./pages/Documentation.jsx";
 import AiEmployeeAssistant from "./pages/AiEmployeeAssistant.jsx";
 import EmployeeDashboard from "./pages/EmployeeDashboard.jsx";
-
+import SuccessionPlanning from "./pages/SuccessionPlanning.jsx";
+import LeadershipPipeline from "./pages/LeadershipPipeline.jsx";
+import FlightRisk from "./pages/FlightRisk.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import NotFound from "./pages/not-found.jsx";
@@ -138,6 +140,9 @@ function AppRouter() {
       <Route path="/softskills" component={() => <ProtectedRoute component={Softskills} />} />
       <Route path="/fatigue" component={() => <ProtectedRoute component={Fatigue} />} />
       <Route path="/workforce-intelligence" component={() => <ManagerRoute component={WorkforceIntelligence} />} />
+      <Route path="/succession-planning" component={() => <ManagerRoute component={SuccessionPlanning} />} />
+      <Route path="/leadership-pipeline" component={() => <ManagerRoute component={LeadershipPipeline} />} />
+      <Route path="/flight-risk" component={() => <ManagerRoute component={FlightRisk} />} />
 
       {/* ✅ THIS ONE */}
       <Route

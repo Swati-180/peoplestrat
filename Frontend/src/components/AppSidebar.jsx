@@ -51,6 +51,9 @@ const insightsItems = [
   { title: "Workforce Intelligence", url: "/workforce-intelligence", icon: Activity },
   { title: "Gap Analysis", url: "/gap-analysis", icon: BarChart3 },
   { title: "6x6 Workforce Analysis", url: "/six-by-six", icon: Layers },
+  { title: "Succession Planning", url: "/succession-planning", icon: Users },
+  { title: "Leadership Pipeline", url: "/leadership-pipeline", icon: Zap },
+  { title: "Flight Risk", url: "/flight-risk", icon: AlertCircle },
 ];
 
 const adminDataItems = [
