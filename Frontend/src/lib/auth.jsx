@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-
+import { API_BASE_URL } from "../services/api";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -27,15 +27,9 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  // REAL LOGIN — backend on port 5001 (matches .env PORT=5001)
-  // BACKEND URL — use VITE_API_URL from environment or fallback to localhost
-  const API_BASE_URL = import.meta.env.VITE_API_URL
-    ? import.meta.env.VITE_API_URL.replace('/api', '')
-    : "http://localhost:5001";
-
   const login = async (usernameOrEmail, password) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: usernameOrEmail, password }),
