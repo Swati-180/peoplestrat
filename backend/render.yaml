@@ -13,3 +13,5 @@ services:
         generateValue: true
       - key: OPENAI_API_KEY
         sync: false
+      - key: FRONTEND_URL
+        value: https://peoplestrat.vercel.app
