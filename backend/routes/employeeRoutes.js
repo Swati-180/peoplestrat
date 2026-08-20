@@ -10,8 +10,13 @@ import {
   getEmployeeStats,
 } from "../controllers/employeeController.js";
 
+import { protect, managerOnly } from '../middleware/auth.js';
+
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+router.use(protect);
+router.use(managerOnly);
 
 router.post("/add", addEmployee);
 router.post("/bulk", upload.single('file'), uploadBulkEmployees);
