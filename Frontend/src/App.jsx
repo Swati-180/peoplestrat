@@ -136,9 +136,9 @@ function AppRouter() {
         }} />
       )} />
       <Route path="/employees" component={() => <ManagerRoute component={Employees} />} />
-      <Route path="/fitment" component={() => <ProtectedRoute component={FitmentAnalysis} />} />
-      <Route path="/softskills" component={() => <ProtectedRoute component={Softskills} />} />
-      <Route path="/fatigue" component={() => <ProtectedRoute component={Fatigue} />} />
+      <Route path="/fitment" component={() => <ManagerRoute component={FitmentAnalysis} />} />
+      <Route path="/softskills" component={() => <ManagerRoute component={Softskills} />} />
+      <Route path="/fatigue" component={() => <ManagerRoute component={Fatigue} />} />
       <Route path="/workforce-intelligence" component={() => <ManagerRoute component={WorkforceIntelligence} />} />
       <Route path="/succession-planning" component={() => <ManagerRoute component={SuccessionPlanning} />} />
       <Route path="/leadership-pipeline" component={() => <ManagerRoute component={LeadershipPipeline} />} />
@@ -152,7 +152,7 @@ function AppRouter() {
 
       <Route
         path="/ai-assistant"
-        component={() => <ProtectedRoute component={AiEmployeeAssistant} />}
+        component={() => <ManagerRoute component={AiEmployeeAssistant} />}
       />
 
       <Route
