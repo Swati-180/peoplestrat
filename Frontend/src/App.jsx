@@ -40,6 +40,7 @@ import EmployeeDashboard from "./pages/EmployeeDashboard.jsx";
 import SuccessionPlanning from "./pages/SuccessionPlanning.jsx";
 import LeadershipPipeline from "./pages/LeadershipPipeline.jsx";
 import FlightRisk from "./pages/FlightRisk.jsx";
+import PeerFeedback from "./pages/PeerFeedback.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import NotFound from "./pages/not-found.jsx";
@@ -143,6 +144,7 @@ function AppRouter() {
       <Route path="/succession-planning" component={() => <ManagerRoute component={SuccessionPlanning} />} />
       <Route path="/leadership-pipeline" component={() => <ManagerRoute component={LeadershipPipeline} />} />
       <Route path="/flight-risk" component={() => <ManagerRoute component={FlightRisk} />} />
+      <Route path="/peer-feedback" component={() => <ProtectedRoute component={PeerFeedback} />} />
 
       {/* ✅ THIS ONE */}
       <Route

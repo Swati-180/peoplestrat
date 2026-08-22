@@ -16,6 +16,7 @@ import successionRoutes from "./routes/successionRoutes.js";
 import pipelineRoutes from "./routes/pipelineRoutes.js";
 import employeePortalRoutes from './routes/employeePortalRoutes.js';
 import userRoutes from './routes/user.js';
+import peerFeedbackRoutes from './routes/peerFeedbackRoutes.js';
 import seedDatabase from './seed.js';
 import User from './models/User.js';
 
@@ -61,6 +62,7 @@ app.use("/api/succession", successionRoutes);
 app.use("/api/pipeline", pipelineRoutes);
 app.use("/api/employee", employeePortalRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/feedback", peerFeedbackRoutes);
 
 // Fallback for old routes or additional ones if needed
 // app.use("/api/ai", aiRoutes); // I'll convert aiController to ESM if needed later

@@ -19,27 +19,42 @@ export default function FlightRisk() {
 
   const loadEmployees = async () => {
     try {
-      const res = await api.get('/employees');
-      if (res.data.success) {
-        setEmployees(res.data.data);
-        // Attempt to fetch cached risk for all
-        res.data.data.forEach(emp => fetchRiskSilently(emp._id));
+      // Fetch employees and analysis results concurrently
+      const [empRes, riskRes] = await Promise.all([
+        api.get('/employees'),
+        api.get('/analysis/results', { params: { limit: 1000 } })
+      ]);
+
+      if (empRes.data.success) {
+        setEmployees(empRes.data.data);
+      }
+
+      // Map existing flight risk data to the UI format
+      if (riskRes.data.success) {
+        const riskMapping = {};
+        riskRes.data.data.forEach(result => {
+          if (result.employee_id && result.employee_id._id && result.flightRiskScore !== undefined) {
+            let riskLevel = 'Low';
+            if (result.flightRiskScore >= 40 && result.flightRiskScore <= 69) riskLevel = 'Medium';
+            if (result.flightRiskScore >= 70) riskLevel = 'High';
+            
+            riskMapping[result.employee_id._id] = {
+              success: true,
+              employeeId: result.employee_id._id,
+              flightRiskScore: result.flightRiskScore,
+              riskLevel,
+              flightRiskFactors: result.flightRiskFactors || [],
+              actionItems: (result.actionItems || []).filter(item => item.action && item.action.startsWith('[Flight Risk]')),
+              lastCalculated: result.updatedAt
+            };
+          }
+        });
+        setRiskData(riskMapping);
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to load employees for flight risk analysis", variant: "destructive" });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchRiskSilently = async (empId) => {
-    try {
-      const res = await getFlightRisk(empId);
-      if (res.data.success) {
-        setRiskData(prev => ({ ...prev, [empId]: res.data }));
-      }
-    } catch (e) {
-      // Ignore if not calculated yet
     }
   };
 

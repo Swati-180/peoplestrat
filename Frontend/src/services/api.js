@@ -59,3 +59,8 @@ export const updatePipelineStage = (employeeId, data) => api.put(`/pipeline/${em
 export const getFlightRisk = (employeeId) => api.get(`/analysis/flight-risk/${employeeId}`);
 export const predictFlightRisk = (employeeId) => api.post(`/analysis/predict-flight-risk/${employeeId}`);
 
+// ─── Peer Feedback APIs ──────────────────────────
+export const submitPeerFeedback = (data) => api.post("/feedback/submit", data);
+export const getAggregatedPeerFeedback = (employeeId) => api.get(`/feedback/target/${employeeId}`);
+export const getPeerFeedbackColleagues = () => api.get('/feedback/colleagues');
+
