@@ -17,6 +17,7 @@ import {
   Layers,
   Rocket,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -54,6 +55,7 @@ const insightsItems = [
   { title: "Succession Planning", url: "/succession-planning", icon: Users },
   { title: "Leadership Pipeline", url: "/leadership-pipeline", icon: Zap },
   { title: "Flight Risk", url: "/flight-risk", icon: AlertCircle },
+  { title: "Peer Feedback", url: "/peer-feedback", icon: MessageSquare },
 ];
 
 const adminDataItems = [
@@ -123,6 +125,7 @@ export function AppSidebar() {
                   <NavItem item={{ title: "Fatigue & Wellbeing", url: "/employee/wellbeing", icon: AlertCircle }} />
                   <NavItem item={{ title: "Career Growth", url: "/employee/career", icon: Rocket }} />
                   <NavItem item={{ title: "AI Career Coach", url: "/employee/career-coach", icon: Sparkles }} />
+                  <NavItem item={{ title: "Peer Feedback", url: "/peer-feedback", icon: MessageSquare }} />
                   <NavItem item={{ title: "Employee Data Form", url: "/employee/data-form", icon: ClipboardList }} />
                 </>
               ) : (
