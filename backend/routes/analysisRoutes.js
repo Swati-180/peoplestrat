@@ -12,10 +12,10 @@ router.use(protect);
 router.post('/run', managerOnly, runAnalysis);
 
 // GET /api/analysis/results — Get analysis results with filters
-router.get('/results', getAnalysisResults);
+router.get('/results', managerOnly, getAnalysisResults);
 
 // GET /api/analysis/summary — Workforce summary KPIs
-router.get('/summary', getAnalysisSummary);
+router.get('/summary', managerOnly, getAnalysisSummary);
 
 // GET /api/analysis/employee/:id — Get specific employee analysis
 router.get('/employee/:id', getEmployeeAnalysis);
