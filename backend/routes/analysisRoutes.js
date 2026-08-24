@@ -1,5 +1,5 @@
 import express from 'express';
-import { runAnalysis, getAnalysisResults, getEmployeeAnalysis, getAnalysisSummary, predictFlightRisk, getFlightRisk } from '../controllers/analysisController.js';
+import { runAnalysis, getAnalysisResults, getEmployeeAnalysis, getAnalysisSummary, predictFlightRisk, getFlightRisk, getGapAnalysis, getGapInterventions } from '../controllers/analysisController.js';
 import { chatAssistant } from '../controllers/aiController.js';
 import { protect, managerOnly } from '../middleware/auth.js';
 
@@ -25,6 +25,12 @@ router.post('/predict-flight-risk/:employeeId', managerOnly, predictFlightRisk);
 
 // GET /api/analysis/flight-risk/:employeeId
 router.get('/flight-risk/:employeeId', managerOnly, getFlightRisk);
+
+// GET /api/analysis/gaps — Deterministic gaps summary
+router.get('/gaps', managerOnly, getGapAnalysis);
+
+// POST /api/analysis/gaps/:employeeId/interventions — On-demand AI recommendations
+router.post('/gaps/:employeeId/interventions', managerOnly, getGapInterventions);
 
 // POST /api/analysis/chat — AI workforce assistant
 router.post('/chat', chatAssistant);
