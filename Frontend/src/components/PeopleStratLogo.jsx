@@ -147,7 +147,7 @@ export default function PeopleStratLogo({
         opacity: 0, transform: "translateY(8px)",
         animation: "PeopleStrat-slideUp .7s cubic-bezier(.16,1,.3,1) 2.1s forwards",
         display: "inline-block",
-      }}>Opti</span>
+      }}>People</span>
       <span style={{
         fontSize: fontPx, fontWeight: 800, letterSpacing: "-0.04em",
         background: "linear-gradient(135deg,#F7931E,#F15A29,#E8421E)",
@@ -155,19 +155,19 @@ export default function PeopleStratLogo({
         opacity: 0, transform: "translateY(8px)",
         animation: "PeopleStrat-slideUp .7s cubic-bezier(.16,1,.3,1) 2.3s forwards",
         display: "inline-block",
-      }}>NXt</span>
+      }}>Strat</span>
     </div>
   );
 
   /* ── Wordmark (no animation — for use in compact navbars) ── */
   const WordmarkStatic = ({ dark = false }) => (
     <div style={{ display: "flex", alignItems: "baseline", gap: 0, lineHeight: 1, fontFamily: "'Outfit','Inter',sans-serif" }}>
-      <span style={{ fontSize: fontPx, fontWeight: 300, letterSpacing: "-0.04em", color: dark ? "#0f172a" : "#ffffff" }}>Opti</span>
+      <span style={{ fontSize: fontPx, fontWeight: 300, letterSpacing: "-0.04em", color: dark ? "#0f172a" : "#ffffff" }}>People</span>
       <span style={{
         fontSize: fontPx, fontWeight: 800, letterSpacing: "-0.04em",
         background: "linear-gradient(135deg,#F7931E,#F15A29,#E8421E)",
         WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-      }}>NXt</span>
+      }}>Strat</span>
     </div>
   );
 
@@ -278,8 +278,8 @@ export function PeopleStratLogoAnimated({ style = {} }) {
 
         {/* Animated wordmark */}
         <div style={{display:"flex",alignItems:"baseline",gap:0}}>
-          <span style={{fontSize:52,fontWeight:300,letterSpacing:"-1.5px",color:"#fff",opacity:0,transform:"translateY(20px)",animation:"PeopleStrat-slideUp .7s cubic-bezier(.16,1,.3,1) 2.1s forwards",display:"inline-block"}}>Opti</span>
-          <span style={{fontSize:52,fontWeight:800,letterSpacing:"-1.5px",background:"linear-gradient(135deg,#F7931E,#F15A29,#E8421E)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",opacity:0,transform:"translateY(20px)",animation:"PeopleStrat-slideUp .7s cubic-bezier(.16,1,.3,1) 2.3s forwards",display:"inline-block"}}>NXt</span>
+          <span style={{fontSize:52,fontWeight:300,letterSpacing:"-1.5px",color:"#fff",opacity:0,transform:"translateY(20px)",animation:"PeopleStrat-slideUp .7s cubic-bezier(.16,1,.3,1) 2.1s forwards",display:"inline-block"}}>People</span>
+          <span style={{fontSize:52,fontWeight:800,letterSpacing:"-1.5px",background:"linear-gradient(135deg,#F7931E,#F15A29,#E8421E)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",opacity:0,transform:"translateY(20px)",animation:"PeopleStrat-slideUp .7s cubic-bezier(.16,1,.3,1) 2.3s forwards",display:"inline-block"}}>Strat</span>
         </div>
 
         {/* Divider wipe */}
