@@ -45,7 +45,7 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import NotFound from "./pages/not-found.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
-import OptiNXtLogo from "./components/OptiNXtLogo.jsx";
+import PeopleStratLogo from "./components/PeopleStratLogo.jsx";
 import EmployeeDataForm from "./pages/employee/EmployeeDataForm.jsx";
 import AddEmployee from "./pages/AddEmployee.jsx";
 import MyProfile from "./pages/employee/MyProfile.jsx";

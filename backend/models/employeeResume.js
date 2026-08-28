@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const EducationSchema = new Schema({
@@ -39,4 +39,5 @@ const ResumeSchema = new Schema({
   rawJson: { type: Schema.Types.Mixed } // store original parsed structure
 }, { timestamps: true });
 
-module.exports = mongoose.model('EmployeeResume', ResumeSchema);
+export default mongoose.model('EmployeeResume', ResumeSchema);
+

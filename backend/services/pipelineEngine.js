@@ -84,7 +84,7 @@ export const generatePipelineLLMInsights = async (employee, score, stage, missin
     }
     const groq = new Groq({ apiKey });
 
-    const prompt = `You are the OptiNXt HR AI mapping an employee in the Leadership Pipeline.
+    const prompt = `You are the PeopleStrat HR AI mapping an employee in the Leadership Pipeline.
 Candidate: ${employee.name} (Current: ${employee.position})
 Determined Stage: ${stage} (Pipeline Score: ${score}/100)
 Missing Data Components: ${missingData.length > 0 ? missingData.join(', ') : 'None'}

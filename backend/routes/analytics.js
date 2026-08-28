@@ -1,15 +1,16 @@
-const express = require('express');
+import express from 'express';
+import { protect } from '../middleware/auth.js';
+import { getWorkforceSummary, getSkillGaps } from '../controllers/analyticsController.js';
+
 const router = express.Router();
-const auth = require('../middlewares/auth');
-const authorize = require('../middlewares/role');
-const analyticsController = require('../controllers/analyticsController');
 
-// @route   GET api/analytics/workforce-summary
-// @access  Private
-router.get('/workforce-summary', [auth, authorize('admin', 'manager', 'hr', 'employee')], analyticsController.getWorkforceSummary);
+// All analytics routes require authentication
+router.use(protect);
 
-// @route   GET api/analytics/skill-gaps
-// @access  Private
-router.get('/skill-gaps', [auth, authorize('admin', 'manager', 'hr', 'employee')], analyticsController.getSkillGaps);
+// GET /api/analytics/workforce-summary
+router.get('/workforce-summary', getWorkforceSummary);
 
-module.exports = router;
+// GET /api/analytics/skill-gaps
+router.get('/skill-gaps', getSkillGaps);
+
+export default router;

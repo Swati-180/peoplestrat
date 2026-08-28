@@ -1,6 +1,7 @@
 /**
  * Analysis Controller — Triggers and retrieves workforce analytics
  */
+import mongoose from 'mongoose';
 import Employee from '../models/Employee.js';
 import PerformanceRecord from '../models/PerformanceRecord.js';
 import FTEWorkload from '../models/FTEWorkload.js';
@@ -343,6 +344,10 @@ export const predictFlightRisk = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ success: false, error: 'Invalid Employee ID format' });
+    }
+
     const employee = await Employee.findById(employeeId);
     if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' });
 
@@ -440,5 +445,164 @@ export const getFlightRisk = async (req, res) => {
   } catch (error) {
     console.error('Get flight risk error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * GET /api/analysis/gaps
+ * Deterministic Gap Analysis Summary
+ */
+export const getGapAnalysis = async (req, res) => {
+  try {
+    const employees = await Employee.find().select('_id name position department fitmentScore productivity fatigueScore skills');
+    
+    const employeesWithGaps = [];
+    const severityDistribution = { High: 0, Medium: 0, Low: 0 };
+    
+    employees.forEach(e => {
+      const fitment = e.fitmentScore || 0;
+      if (fitment < 85) {
+        let severity = "Low";
+        let gapCount = 1;
+        
+        if (fitment < 50) {
+          severity = "High";
+          gapCount = 4;
+        } else if (fitment < 75) {
+          severity = "Medium";
+          gapCount = 2;
+        }
+        
+        severityDistribution[severity]++;
+        
+        employeesWithGaps.push({
+          _id: e._id,
+          name: e.name,
+          position: e.position,
+          department: e.department,
+          fitmentScore: fitment,
+          gapCount,
+          severity,
+          productivity: e.productivity || 0,
+          fatigueScore: e.fatigueScore || 0,
+          skills: e.skills || []
+        });
+      }
+    });
+
+    // Top gaps (highest gapCount, then lowest fitment)
+    const topGaps = [...employeesWithGaps]
+      .sort((a, b) => b.gapCount - a.gapCount || a.fitmentScore - b.fitmentScore)
+      .slice(0, 10)
+      .map(e => ({ name: e.name.split(' ')[0], gaps: e.gapCount }));
+
+    const formattedDistribution = [
+      { name: "High", value: severityDistribution["High"] },
+      { name: "Medium", value: severityDistribution["Medium"] },
+      { name: "Low", value: severityDistribution["Low"] }
+    ];
+
+    res.json({
+      success: true,
+      summary: {
+        severityDistribution: formattedDistribution,
+        topGaps
+      },
+      employeesWithGaps
+    });
+  } catch (error) {
+    console.error('Gap analysis summary error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+import Groq from 'groq-sdk';
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy' });
+
+/**
+ * POST /api/analysis/gaps/:employeeId/interventions
+ * On-demand AI recommendations
+ */
+export const getGapInterventions = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const employee = await Employee.findById(employeeId);
+    
+    if (!employee) {
+      return res.status(404).json({ success: false, error: 'Employee not found' });
+    }
+
+    const fallbackInterventions = [
+      {
+        title: "Focused Upskilling",
+        description: `Complete advanced ${employee.position || 'role'} certification.`
+      },
+      {
+        title: "Peer Mentorship",
+        description: `Pair with a High-Fitment ${employee.position || 'peer'}.`
+      }
+    ];
+
+    if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY === 'mock_key' || process.env.GROQ_API_KEY === 'your_groq_api_key') {
+      return res.json({
+        success: true,
+        interventions: fallbackInterventions,
+        source: "fallback"
+      });
+    }
+
+    const prompt = `You are an expert HR analyst. The following employee has a skill/fitment gap.
+Name: ${employee.name}
+Role: ${employee.position}
+Department: ${employee.department}
+Current Fitment Score: ${employee.fitmentScore || 0}/100
+Current Skills: ${(employee.skills || []).join(', ')}
+
+Provide exactly 2 targeted, actionable interventions to improve their fitment. 
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "interventions": [
+    {
+      "title": "Short title",
+      "description": "Actionable description"
+    }
+  ]
+}`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama3-8b-8192',
+      temperature: 0.5,
+      response_format: { type: 'json_object' }
+    });
+
+    const aiResponse = JSON.parse(chatCompletion.choices[0].message.content);
+    
+    if (aiResponse && Array.isArray(aiResponse.interventions) && aiResponse.interventions.length > 0) {
+      return res.json({
+        success: true,
+        interventions: aiResponse.interventions,
+        source: "ai"
+      });
+    } else {
+      throw new Error("Invalid AI response structure");
+    }
+  } catch (error) {
+    console.error('Gap interventions AI error, falling back:', error.message);
+    const fallbackInterventions = [
+      {
+        title: "Focused Upskilling",
+        description: "Complete advanced role-specific certification."
+      },
+      {
+        title: "Peer Mentorship",
+        description: "Pair with a High-Fitment peer in the same department."
+      }
+    ];
+    res.json({
+      success: true,
+      interventions: fallbackInterventions,
+      source: "fallback"
+    });
   }
 };

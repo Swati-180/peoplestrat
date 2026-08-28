@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const ActivityLogSchema = new Schema({
@@ -10,4 +10,5 @@ const ActivityLogSchema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('ActivityLog', ActivityLogSchema);
+export default mongoose.model('ActivityLog', ActivityLogSchema);
+

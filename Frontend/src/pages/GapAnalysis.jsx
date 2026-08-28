@@ -37,18 +37,18 @@ export default function GapAnalysis() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [employees, setEmployees] = useState([]);
+  const [gapData, setGapData] = useState({ employeesWithGaps: [], summary: { topGaps: [], severityDistribution: [] } });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadEmployees = async () => {
+    const loadGaps = async () => {
       try {
-        const response = await api.get("/employees");
+        const response = await api.get("/analysis/gaps");
         if (response.data.success) {
-          setEmployees(response.data.data);
+          setGapData(response.data);
         }
       } catch (error) {
-        console.error("Failed to fetch employees:", error);
+        console.error("Failed to fetch gap analysis data:", error);
         toast({
           title: "Error",
           description: "Could not load gap analysis data.",
@@ -58,46 +58,19 @@ export default function GapAnalysis() {
         setIsLoading(false);
       }
     };
-    loadEmployees();
+    loadGaps();
   }, [toast]);
 
-  const employeesWithGaps = useMemo(() => {
-    return employees.filter(e => (e.scores?.fitment || e.fitmentScore || 0) < 85).map(e => {
-      let severity = "Low";
-      let gapCount = 1;
-      const fitment = e.scores?.fitment || e.fitmentScore || 0;
-      if (fitment < 50) {
-        severity = "High";
-        gapCount = 4;
-      } else if (fitment < 75) {
-        severity = "Medium";
-        gapCount = 2;
-      }
-      return { ...e, severity, gapCount };
-    });
-  }, [employees]);
-
   const filteredEmployees = useMemo(() => {
-    return employeesWithGaps.filter(
+    return gapData.employeesWithGaps.filter(
       (e) =>
         e.name.toLowerCase().includes(search.toLowerCase()) ||
         e.position.toLowerCase().includes(search.toLowerCase())
     );
-  }, [search, employeesWithGaps]);
+  }, [search, gapData.employeesWithGaps]);
 
-  const barData = useMemo(() => {
-    return filteredEmployees.slice(0, 10).map(e => ({ name: e.name.split(' ')[0], gaps: e.gapCount }));
-  }, [filteredEmployees]);
-
-  const donutData = useMemo(() => {
-    const counts = { "High": 0, "Medium": 0, "Low": 0 };
-    employeesWithGaps.forEach(e => counts[e.severity]++);
-    return [
-      { name: "High", value: counts["High"] },
-      { name: "Medium", value: counts["Medium"] },
-      { name: "Low", value: counts["Low"] },
-    ];
-  }, [employeesWithGaps]);
+  const barData = gapData.summary.topGaps;
+  const donutData = gapData.summary.severityDistribution;
 
   const COLORS = ["#3B82F6", "#F59E0B", "#10B981"]; // Blue, Amber, Green - Refined palette
 
@@ -111,10 +84,10 @@ export default function GapAnalysis() {
   };
 
   const handleExport = () => {
-    if (!employeesWithGaps.length) return;
+    if (!gapData.employeesWithGaps.length) return;
     const headers = "Name,Position,Department,Gap Severity,Gap Count,Fitment Score\n";
-    const rows = employeesWithGaps.map(e => 
-      `${e.name},${e.position},${e.department},${e.severity},${e.gapCount},${e.scores?.fitment || e.fitmentScore || 0}%`
+    const rows = gapData.employeesWithGaps.map(e => 
+      `${e.name},${e.position},${e.department},${e.severity},${e.gapCount},${e.fitmentScore || 0}%`
     ).join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -139,7 +112,7 @@ export default function GapAnalysis() {
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gap Analysis</h1>
           <p className="text-slate-500 mt-1">
-            Skill, performance & development gaps across {employees.length} employees
+            Skill, performance & development gaps across {gapData.employeesWithGaps.length} employees
           </p>
         </div>
 
@@ -240,7 +213,7 @@ export default function GapAnalysis() {
                       {e.severity}
                     </Badge>
                   </td>
-                  <td className="p-3 text-center font-medium">{e.scores?.fitment || e.fitmentScore || 0}%</td>
+                  <td className="p-3 text-center font-medium">{e.fitmentScore || 0}%</td>
                   <td className="p-3 text-center">
                     <Button
                       variant="ghost"
@@ -275,6 +248,34 @@ export default function GapAnalysis() {
 /* ---------------- DETAIL PAGE ---------------- */
 
 function EmployeeDetail({ employee }) {
+  const [interventions, setInterventions] = useState([]);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [source, setSource] = useState("");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchInterventions = async () => {
+      setLoadingAI(true);
+      try {
+        const res = await api.post(`/analysis/gaps/${employee._id}/interventions`);
+        if (res.data.success) {
+          setInterventions(res.data.interventions);
+          setSource(res.data.source);
+        }
+      } catch (error) {
+        console.error("Intervention fetch error", error);
+        toast({ title: "Failed to generate interventions", variant: "destructive" });
+        setInterventions([
+          { title: "Focused Upskilling", description: "Complete advanced role-specific certification." },
+          { title: "Peer Mentorship", description: "Pair with a High-Fitment peer." }
+        ]);
+      } finally {
+        setLoadingAI(false);
+      }
+    };
+    if (employee._id) fetchInterventions();
+  }, [employee._id, toast]);
+
   return (
     <div className="space-y-6 p-2">
       <div className="flex items-center gap-6">
@@ -287,7 +288,6 @@ function EmployeeDetail({ employee }) {
           <p className="text-lg text-muted-foreground">{employee.position}</p>
           <div className="flex gap-2 mt-2">
             <Badge variant="outline">{employee.department}</Badge>
-            <Badge variant="outline">{employee.employeeId}</Badge>
           </div>
         </div>
       </div>
@@ -298,7 +298,7 @@ function EmployeeDetail({ employee }) {
             <CardTitle className="text-sm font-medium text-red-800 uppercase">Fitment Gap</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-red-600">-{100 - (employee.scores?.fitment || employee.fitmentScore || 0)}%</p>
+            <p className="text-3xl font-bold text-red-600">-{100 - (employee.fitmentScore || 0)}%</p>
             <p className="text-xs text-red-600/70 mt-1">Below target baseline</p>
           </CardContent>
         </Card>
@@ -308,7 +308,7 @@ function EmployeeDetail({ employee }) {
             <CardTitle className="text-sm font-medium text-blue-800 uppercase">Productivity</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-blue-600">{employee.scores?.productivity || employee.productivity || 0}%</p>
+            <p className="text-3xl font-bold text-blue-600">{employee.productivity || 0}%</p>
             <p className="text-xs text-blue-600/70 mt-1">Consistency score</p>
           </CardContent>
         </Card>
@@ -332,23 +332,32 @@ function EmployeeDetail({ employee }) {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Technical Competency</span>
-              <span className="text-muted-foreground">{employee.scores?.fitment || employee.fitmentScore || 0}% Matching</span>
+              <span className="text-muted-foreground">{employee.fitmentScore || 0}% Matching</span>
             </div>
-            <Progress value={employee.scores?.fitment || employee.fitmentScore || 0} className="h-2" />
+            <Progress value={employee.fitmentScore || 0} className="h-2" />
           </div>
 
           <div className="space-y-4 pt-4 border-t">
-            <h4 className="font-semibold text-sm">Recommended Interventions</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg border bg-muted/30">
-                <p className="font-medium text-sm">Focused Upskilling</p>
-                <p className="text-xs text-muted-foreground mt-1">Complete advanced {employee.position} certification.</p>
-              </div>
-              <div className="p-3 rounded-lg border bg-muted/30">
-                <p className="font-medium text-sm">Peer Mentorship</p>
-                <p className="text-xs text-muted-foreground mt-1">Pair with a High-Fitment {employee.position}.</p>
-              </div>
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-sm">Recommended Interventions</h4>
+              {source === "ai" && <Badge className="bg-purple-100 text-purple-700 border-purple-200">✨ AI Generated</Badge>}
             </div>
+            
+            {loadingAI ? (
+              <div className="flex items-center justify-center p-6 space-x-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Analyzing skills and generating recommendations...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {interventions.map((inv, idx) => (
+                  <div key={idx} className="p-3 rounded-lg border bg-muted/30">
+                    <p className="font-medium text-sm">{inv.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{inv.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

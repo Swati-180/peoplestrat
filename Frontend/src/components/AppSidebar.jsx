@@ -38,7 +38,7 @@ import { useAuth } from "../lib/auth.jsx";
 import { queryClient } from "../lib/queryClient.js";
 import { cn } from "../lib/utils";
 import { Avatar, AvatarFallback } from "./ui/avatar.jsx";
-import OptiNXtLogo from "./OptiNXtLogo.jsx";
+import PeopleStratLogo from "./PeopleStratLogo.jsx";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -95,7 +95,7 @@ export function AppSidebar() {
     <Sidebar className="border-r-0 bg-sidebar">
       <SidebarHeader className="px-6 py-4 pb-2">
         <div style={{ paddingBottom: 4 }}>
-          <OptiNXtLogo variant="full" size="sm" />
+          <PeopleStratLogo variant="full" size="sm" />
         </div>
       </SidebarHeader>
 

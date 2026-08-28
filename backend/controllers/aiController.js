@@ -76,7 +76,7 @@ export const chatAssistant = async (req, res) => {
       }
 
       // Default Workforce prompt
-      let systemPrompt = `You are the OptiNXt Workforce Analyst. 
+      let systemPrompt = `You are the PeopleStrat Workforce Analyst. 
 Use the PROVIDED DATA below to answer questions about burnout, reskilling, underutilization, and individual performance.
 DO NOT use general knowledge. ONLY use the names and scores from the DATA CONTEXT.
 
@@ -90,7 +90,7 @@ ${dataContext}`;
 
       // Career Coach prompt
       if (isCareerCoach) {
-        systemPrompt = `You are the OptiNXt AI Career Coach. 
+        systemPrompt = `You are the PeopleStrat AI Career Coach. 
 An employee is talking to you about their career growth, fitment, and performance.
 Use the PROVIDED DATA below to give them personalized career advice, upskilling suggestions, and performance improvement tips.
 
