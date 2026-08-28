@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const EmployeeSkillsSchema = new Schema({
@@ -10,4 +10,5 @@ const EmployeeSkillsSchema = new Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('EmployeeSkills', EmployeeSkillsSchema);
+export default mongoose.model('EmployeeSkills', EmployeeSkillsSchema);
+

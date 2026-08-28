@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const FitmentSchema = new Schema({
@@ -14,4 +14,5 @@ const FitmentSchema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('FitmentMatch', FitmentSchema);
+export default mongoose.model('FitmentMatch', FitmentSchema);
+

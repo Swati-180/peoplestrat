@@ -106,7 +106,7 @@ export const generateSuccessionLLMInsights = async (employee, jobDescription, sc
     }
     const groq = new Groq({ apiKey });
 
-    const prompt = `You are the OptiNXt HR AI mapping a candidate for a critical role.
+    const prompt = `You are the PeopleStrat HR AI mapping a candidate for a critical role.
 Role: ${jobDescription.title}
 Candidate: ${employee.name} (Current: ${employee.position})
 Determined Readiness: ${timeframe} (Score: ${score}/100)

@@ -157,7 +157,7 @@ export const generateLLMInsights = async (employee, score, riskLevel, perfRecord
     // Payload for prompt
     const avgOT = perfRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0) / (perfRecords.length || 1);
 
-    const prompt = `You are the OptiNXt HR AI.
+    const prompt = `You are the PeopleStrat HR AI.
 An employee named ${employee.name} (Role: ${employee.position}, Perf: ${employee.performance}) has a deterministically calculated Flight Risk Score of ${score}/100 (${riskLevel} Risk).
 Their current stats:
 - Fatigue Score: ${employee.fatigueScore}/100

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import OptiNXtLogo from "../components/OptiNXtLogo.jsx";
+import PeopleStratLogo from "../components/PeopleStratLogo.jsx";
 
 /* ─────────────────────────────────────────────
    Tiny inline SVG icons (no extra deps needed)
@@ -83,7 +83,7 @@ function DashboardMock() {
         <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
         <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
         <span style={{ marginLeft: 12, fontSize: 11, color: "#64748b", fontWeight: 600 }}>
-          OptiNXT · Workforce Intelligence Command Center
+          PEOPLESTRAT · Workforce Intelligence Command Center
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           <span style={{ fontSize: 10, background: "#e0f2fe", color: "#0284c7", borderRadius: 4, padding: "2px 7px", fontWeight: 700 }}>MANAGER</span>
@@ -295,7 +295,7 @@ export default function LandingPage() {
       {/* ── NAVBAR ── */}
       <nav style={s.nav}>
         <div style={s.navLogo} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <OptiNXtLogo variant="full" size="sm" style={{ gap: 6 }} />
+          <PeopleStratLogo variant="full" size="sm" style={{ gap: 6 }} />
         </div>
 
         {/* Desktop links */}
@@ -407,7 +407,7 @@ export default function LandingPage() {
       {/* ── SOLUTIONS (Benefits) ── */}
       <section id="solutions" style={{ ...s.section }}>
         <div style={s.sectionCenter}>
-          <span style={{ ...s.chip, background: "linear-gradient(135deg,#fef3c7,#fde68a)", color: "#b45309" }}>WHY OPTINXT</span>
+          <span style={{ ...s.chip, background: "linear-gradient(135deg,#fef3c7,#fde68a)", color: "#b45309" }}>WHY PEOPLESTRAT</span>
           <h2 style={s.h2}>Everything your organization needs</h2>
           <p style={s.subtext}>Built for modern enterprises that want to lead with intelligence, not instinct.</p>
         </div>
@@ -448,7 +448,7 @@ export default function LandingPage() {
             Ready to transform your workforce?
           </h2>
           <p style={{ fontSize: 18, opacity: 0.9, lineHeight: 1.7, margin: "0 0 36px" }}>
-            Join forward-thinking organizations using OptiNXt to build smarter, healthier, and more productive teams.
+            Join forward-thinking organizations using PeopleStrat to build smarter, healthier, and more productive teams.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <button
@@ -479,7 +479,7 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer id="about" style={s.footer}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 16 }}>
-          <OptiNXtLogo variant="full" size="sm" />
+          <PeopleStratLogo variant="full" size="sm" />
         </div>
         <p style={{ margin: "0 0 12px" }}>AI Workforce Intelligence Platform — Empowering Smarter Organizations</p>
         <div style={{ display: "flex", gap: 24, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
@@ -487,7 +487,7 @@ export default function LandingPage() {
             <a key={l} href="#" style={{ color: "rgba(255,255,255,0.5)", textDecoration: "none", transition: "color 0.2s" }}>{l}</a>
           ))}
         </div>
-        <p style={{ margin: 0, fontSize: 13 }}>© {new Date().getFullYear()} OptiNXt. All rights reserved.</p>
+        <p style={{ margin: 0, fontSize: 13 }}>© {new Date().getFullYear()} PeopleStrat. All rights reserved.</p>
       </footer>
 
       {/* ── KEYFRAMES ── */}

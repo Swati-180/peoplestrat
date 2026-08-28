@@ -12,6 +12,8 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import optimizationRoutes from "./routes/optimizationRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
+import analyticsRoutes from "./routes/analytics.js";
+import assessmentsRoutes from "./routes/assessments.js";
 import successionRoutes from "./routes/successionRoutes.js";
 import pipelineRoutes from "./routes/pipelineRoutes.js";
 import employeePortalRoutes from './routes/employeePortalRoutes.js';
@@ -58,11 +60,13 @@ app.use("/api/uploads", uploadRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/optimization", optimizationRoutes);
 app.use("/api/analysis", analysisRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/succession", successionRoutes);
 app.use("/api/pipeline", pipelineRoutes);
 app.use("/api/employee", employeePortalRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/feedback", peerFeedbackRoutes);
+app.use("/api/assessments", assessmentsRoutes);
 
 // Fallback for old routes or additional ones if needed
 // app.use("/api/ai", aiRoutes); // I'll convert aiController to ESM if needed later
@@ -89,4 +93,8 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+export default app;

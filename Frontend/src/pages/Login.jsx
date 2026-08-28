@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import OptiNXtLogo from "../components/OptiNXtLogo.jsx";
+import PeopleStratLogo from "../components/PeopleStratLogo.jsx";
 import {
   Dialog,
   DialogContent,
@@ -204,7 +204,7 @@ export default function Login() {
 
         {/* Logo */}
         <div style={{ position: "relative", zIndex: 1 }}>
-          <OptiNXtLogo variant="full" size="md" />
+          <PeopleStratLogo variant="full" size="md" />
         </div>
 
         {/* Headline */}
@@ -257,7 +257,7 @@ export default function Login() {
         <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ color: "#10b981" }}><IconShield /></div>
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-            © 2026 OptiNXt · SOC2 Compliant · Secure Enterprise Access
+            © 2026 PeopleStrat · SOC2 Compliant · Secure Enterprise Access
           </span>
         </div>
       </div>
@@ -418,7 +418,7 @@ export default function Login() {
             </div>
 
             <div style={{ fontSize: 14, color: "#64748b" }}>
-              New to OptiNXt?{" "}
+              New to PeopleStrat?{" "}
               <button
                 type="button"
                 onClick={() => setLocation("/register")}

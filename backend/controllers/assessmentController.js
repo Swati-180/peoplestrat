@@ -1,9 +1,9 @@
-const Assessment = require('../models/Assessment');
-const Question = require('../models/Question');
-const Result = require('../models/Result');
-const Employee = require('../models/Employee');
+import Assessment from '../models/Assessment.js';
+import Question from '../models/Question.js';
+import Result from '../models/Result.js';
+import Employee from '../models/Employee.js';
 
-exports.createAssessment = async (req, res) => {
+export const createAssessment = async (req, res) => {
   try {
     const { title, description, timeLimitMinutes } = req.body;
     const newAssessment = new Assessment({ title, description, timeLimitMinutes });
@@ -15,7 +15,7 @@ exports.createAssessment = async (req, res) => {
   }
 };
 
-exports.addQuestion = async (req, res) => {
+export const addQuestion = async (req, res) => {
   try {
     const { text, category, options, weight } = req.body;
     const assessmentId = req.params.id;
@@ -29,7 +29,7 @@ exports.addQuestion = async (req, res) => {
   }
 };
 
-exports.getAssessmentForStart = async (req, res) => {
+export const getAssessmentForStart = async (req, res) => {
   try {
     const assessment = await Assessment.findById(req.params.id);
     if (!assessment) return res.status(404).json({ success: false, error: 'Assessment not found' });
@@ -43,7 +43,7 @@ exports.getAssessmentForStart = async (req, res) => {
   }
 };
 
-exports.submitAssessmentAndGrade = async (req, res) => {
+export const submitAssessmentAndGrade = async (req, res) => {
   try {
     const assessmentId = req.params.id;
     const answers = req.body.answers; 

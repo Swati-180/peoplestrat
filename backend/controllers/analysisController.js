@@ -1,6 +1,7 @@
 /**
  * Analysis Controller — Triggers and retrieves workforce analytics
  */
+import mongoose from 'mongoose';
 import Employee from '../models/Employee.js';
 import PerformanceRecord from '../models/PerformanceRecord.js';
 import FTEWorkload from '../models/FTEWorkload.js';
@@ -342,6 +343,10 @@ import { calculateDeterministicFlightRisk, generateLLMInsights } from '../servic
 export const predictFlightRisk = async (req, res) => {
   try {
     const { employeeId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ success: false, error: 'Invalid Employee ID format' });
+    }
 
     const employee = await Employee.findById(employeeId);
     if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' });

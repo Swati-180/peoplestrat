@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest --forceExit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit",
     "seed": "node seed.js"
   },
   "keywords": [],
