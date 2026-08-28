@@ -494,7 +494,7 @@ export const getGapAnalysis = async (req, res) => {
     const topGaps = [...employeesWithGaps]
       .sort((a, b) => b.gapCount - a.gapCount || a.fitmentScore - b.fitmentScore)
       .slice(0, 10)
-      .map(e => ({ name: e.name.split(' ')[0], gaps: e.gapCount }));
+      .map(e => ({ name: (e.name || 'Unknown').split(' ')[0], gaps: e.gapCount }));
 
     const formattedDistribution = [
       { name: "High", value: severityDistribution["High"] },
