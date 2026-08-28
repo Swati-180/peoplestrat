@@ -59,10 +59,14 @@ function EmployeeView() {
 
   const loadData = async () => {
     try {
-      // 1. Get my employee ID
-      const meRes = await api.get("/employee/me");
-      if (meRes.data.success) {
-        setMyEmployeeId(meRes.data.data._id);
+      // 1. Get my employee ID (wrap in its own try/catch so failure doesn't break everything)
+      try {
+        const meRes = await api.get("/employee/me");
+        if (meRes.data.success) {
+          setMyEmployeeId(meRes.data.data._id);
+        }
+      } catch (meError) {
+        console.warn("Could not load own employee profile, continuing without self-filtering.");
       }
       
       // 2. Get all employees for the dropdown
