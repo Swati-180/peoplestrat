@@ -46,6 +46,7 @@ const menuItems = [
 
 const insightsItems = [
   { title: "Employees", url: "/employees", icon: Users },
+  { title: "User Management", url: "/users", icon: Users },
   { title: "Fitment Analysis", url: "/fitment", icon: Target },
   { title: "Softskills", url: "/softskills", icon: Brain },
   { title: "Fatigue Analysis", url: "/fatigue", icon: AlertCircle },

@@ -97,7 +97,7 @@ export default function Optimization() {
         />
         <SummaryCard
           title="Employees Impacted"
-          value={totalEmployees.toString()}
+          value={totalEmps ? totalEmps.toString() : "0"}
           icon={Users}
         />
       </div>
@@ -127,7 +127,7 @@ export default function Optimization() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 text-center border-y py-4">
-                  <Metric label="Scope" value={`${rec.impact.employees} EMP`} />
+                  <Metric label="Scope" value={`${rec.impact.employees || rec.impact.processes} ${rec.impact.employees ? 'EMP' : 'Process(es)'}`} />
                   <Metric
                     label="Savings"
                     value={rec.impact.savings}

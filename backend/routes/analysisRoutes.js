@@ -1,5 +1,5 @@
 import express from 'express';
-import { runAnalysis, getAnalysisResults, getEmployeeAnalysis, getAnalysisSummary, predictFlightRisk, getFlightRisk, getGapAnalysis, getGapInterventions } from '../controllers/analysisController.js';
+import { runAnalysis, getAnalysisResults, getEmployeeAnalysis, getAnalysisSummary, predictFlightRisk, predictFlightRiskBatch, getFlightRisk, getGapAnalysis, getGapInterventions } from '../controllers/analysisController.js';
 import { chatAssistant } from '../controllers/aiController.js';
 import { protect, managerOnly } from '../middleware/auth.js';
 
@@ -22,6 +22,9 @@ router.get('/employee/:id', getEmployeeAnalysis);
 
 // POST /api/analysis/predict-flight-risk/:employeeId
 router.post('/predict-flight-risk/:employeeId', managerOnly, predictFlightRisk);
+
+// POST /api/analysis/predict-flight-risk-batch
+router.post('/predict-flight-risk-batch', managerOnly, predictFlightRiskBatch);
 
 // GET /api/analysis/flight-risk/:employeeId
 router.get('/flight-risk/:employeeId', managerOnly, getFlightRisk);

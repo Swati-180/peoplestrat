@@ -1,84 +1,25 @@
+import React, { useState, useMemo } from "react";
 import { useWorkforceData } from "@/contexts/WorkforceContext";
-import React, { useState, useMemo, useEffect } from "react";
-import { api } from "@/services/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Brain,
-  TrendingDown,
-  TrendingUp,
-  ArrowRight,
-  ChevronRight,
-  Users,
-  Clock,
-  Activity,
-  Heart,
-  AlertTriangle,
-  Target,
-  Zap,
-  Info,
-  CheckCircle2,
-} from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { useLocation } from "wouter";
+import { PageHeader } from "@/components/manager/PageHeader";
+import { KpiStrip } from "@/components/manager/KpiStrip";
+import { CompactTable } from "@/components/manager/CompactTable";
+import { StatusBadge } from "@/components/manager/StatusBadge";
+import { Pagination } from "@/components/manager/Pagination";
 import EmployeeDrawer from "@/components/EmployeeDrawer";
-import { Loader2 } from "lucide-react";
+import { Loader2, Activity, HeartPulse } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 
 export default function Fatigue() {
-  const { employees: contextEmployees, getFatigueRisk } = useWorkforceData();
+  const { employees, isLoading } = useWorkforceData();
   const { user } = useAuth();
   const isEmployee = user?.role === "employee";
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
-
-  const [employees, setEmployees] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [activeModal, setActiveModal] = useState(null);
-  const [modalData, setModalData] = useState(null);
-  const [employeeWdt, setEmployeeWdt] = useState(null);
-
-  useEffect(() => {
-    const loadEmployees = async () => {
-      try {
-        const response = await api.get("/employees");
-        if (response.data.success) {
-          setEmployees(response.data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch employees:", error);
-        toast({
-          title: "Error",
-          description: "Could not load fatigue analytics.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadEmployees();
-  }, [toast]);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Basic filtering for employee view vs manager view
   const displayEmployees = useMemo(() => {
+    if (!employees) return [];
     if (isEmployee) {
       return employees.filter(e => e._id === user.id || e.email === user.email);
     }
@@ -86,246 +27,141 @@ export default function Fatigue() {
   }, [isEmployee, user, employees]);
 
   const fatigueMetrics = useMemo(() => {
-    if (displayEmployees.length === 0) return { overallScore: 0, riskLevel: "UNKNOWN", trend: 0 };
-    const avgFatigue = displayEmployees.reduce((sum, e) => sum + (e.scores?.fatigue || 0), 0) / displayEmployees.length;
+    if (displayEmployees.length === 0) return { avgFatigue: 0, criticalCount: 0, highCount: 0, healthyCount: 0 };
+    let sum = 0, critical = 0, high = 0, healthy = 0;
+    
+    displayEmployees.forEach(e => {
+      const fatigue = e.scores?.fatigue || e.fatigueScore || 0;
+      sum += fatigue;
+      if (fatigue >= 75) critical++;
+      else if (fatigue >= 50) high++;
+      else healthy++;
+    });
+    
     return {
-      overallScore: Math.round(avgFatigue),
-      riskLevel: avgFatigue >= 75 ? "CRITICAL" : avgFatigue >= 50 ? "HIGH" : "MEDIUM",
-      trend: -5
+      avgFatigue: Math.round(sum / displayEmployees.length),
+      criticalCount: critical,
+      highCount: high,
+      healthyCount: healthy
     };
   }, [displayEmployees]);
 
-  const keyIndicators = useMemo(() => {
-    const avgUtilization = displayEmployees.length > 0 
-      ? Math.round(displayEmployees.reduce((sum, e) => sum + (e.scores?.utilization || 0), 0) / displayEmployees.length)
-      : 0;
-    const avgProductivity = displayEmployees.length > 0
-      ? Math.round(displayEmployees.reduce((sum, e) => sum + (e.scores?.productivity || 0), 0) / displayEmployees.length)
-      : 0;
+  const kpis = [
+    { label: "Critical Risk", value: fatigueMetrics.criticalCount, trend: 2 },
+    { label: "High Risk", value: fatigueMetrics.highCount, trend: -1 },
+    { label: "Healthy", value: fatigueMetrics.healthyCount },
+    { label: "Average Fatigue", value: `${fatigueMetrics.avgFatigue}%` }
+  ];
+
+  const tableData = displayEmployees.map(emp => {
+    const fatigueScore = emp.scores?.fatigue || emp.fatigueScore || 0;
+    const utilization = emp.scores?.utilization || emp.utilization || 0;
+    let riskLevel = 'Low';
+    if (fatigueScore >= 75) riskLevel = 'High';
+    else if (fatigueScore >= 50) riskLevel = 'Medium';
     
-    return [
-      {
-        id: "utilization",
-        title: "Workload Intensity",
-        value: avgUtilization,
-        change: 12,
-        changeType: "up",
-        icon: Target,
-        definition: "Average utilization rate across all assigned projects and tasks.",
-        recommendation: "Consider redistributing high-priority tasks from overloaded teams."
-      },
-      {
-        id: "overtime",
-        title: "Overtime Frequency",
-        value: 64,
-        change: 8,
-        changeType: "up",
-        icon: Clock,
-        definition: "Percentage of employees reporting working hours beyond standard shifts.",
-        recommendation: "Implement strictly enforced 'switch-off' hours for remote teams."
-      },
-      {
-        id: "productivity",
-        title: "Focus Consistency",
-        value: avgProductivity,
-        change: 15,
-        changeType: "down",
-        icon: Activity,
-        definition: "Measure of sustained attention and output consistency throughout the day.",
-        recommendation: "Incorporate focus-blocks and reduce non-essential recurring meetings."
-      },
-      {
-        id: "fatigue",
-        title: "Stress Signals",
-        value: fatigueMetrics.overallScore,
-        change: 9,
-        changeType: "up",
-        icon: Heart,
-        definition: "AI-detected patterns in work habits indicating physiological or mental strain.",
-        recommendation: "Schedule 1-on-1 wellness checks for high-risk flagged individuals."
-      }
-    ];
-  }, [displayEmployees, fatigueMetrics]);
+    return {
+      id: emp._id || emp.id,
+      employee: emp,
+      name: emp.name,
+      department: emp.department,
+      utilization: utilization,
+      fatigueScore: fatigueScore,
+      riskLevel: riskLevel,
+      trend: fatigueScore > 70 ? 'Increasing' : 'Stable'
+    };
+  }).sort((a, b) => b.fatigueScore - a.fatigueScore);
 
-  const teamFatigue = useMemo(() => {
-    const depts = [...new Set(employees.map(e => e.department))].filter(Boolean);
-    return depts.map(dept => {
-      const deptEmps = employees.filter(e => e.department === dept);
-      const avgFatigue = deptEmps.reduce((sum, e) => sum + (e.scores?.fatigue || 0), 0) / deptEmps.length;
-      return {
-        team: dept,
-        fatigue: Math.round(avgFatigue),
-        risk: avgFatigue >= 75 ? "CRITICAL" : avgFatigue >= 50 ? "HIGH" : "MEDIUM",
-      };
-    }).sort((a, b) => b.fatigue - a.fatigue);
-  }, [employees]);
+  const pageSize = 15;
+  const totalPages = Math.ceil(tableData.length / pageSize);
+  const paginatedData = tableData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const wellbeingSignals = useMemo(() => [
-    {
-      title: "High Burnout Risk",
-      count: employees.filter(e => (e.scores?.fatigue || 0) >= 75).length,
-      employees: employees.filter(e => (e.scores?.fatigue || 0) >= 75),
-      factor: "Extended high utilization (>95%)",
-      color: "red",
+  const columns = [
+    { header: "Employee", accessorKey: "name", className: "font-medium" },
+    { header: "Department", accessorKey: "department", className: "text-gray-500" },
+    { 
+      header: "Work Intensity (Utilization)", 
+      accessorKey: "utilization", 
+      cell: (row) => `${row.utilization}%`
     },
-    {
-      title: "Low Engagement",
-      count: employees.filter(e => (e.scores?.productivity || 0) < 65).length,
-      employees: employees.filter(e => (e.scores?.productivity || 0) < 65),
-      factor: "Repetitive task cycles",
-      color: "yellow",
+    { 
+      header: "Fatigue Score", 
+      accessorKey: "fatigueScore",
+      cell: (row) => <span className="font-semibold">{row.fatigueScore}%</span>
+    },
+    { 
+      header: "Risk", 
+      accessorKey: "riskLevel",
+      cell: (row) => <StatusBadge status={row.riskLevel} />
+    },
+    { 
+      header: "Trend", 
+      accessorKey: "trend",
+      cell: (row) => (
+        <span className={row.trend === 'Increasing' ? 'text-orange-500' : 'text-gray-500'}>
+          {row.trend}
+        </span>
+      )
+    },
+    { 
+      header: "Action", 
+      accessorKey: "action", 
+      cell: (row) => (
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedEmployee(row.employee); }}>
+          View &rarr;
+        </Button>
+      )
     }
-  ], [employees]);
-
-  const getRiskBadge = (risk) => {
-    switch (risk) {
-      case "CRITICAL": return "bg-red-100 text-red-700 border-red-200";
-      case "HIGH": return "bg-orange-100 text-orange-700 border-orange-200";
-      case "MEDIUM": return "bg-blue-100 text-blue-700 border-blue-200";
-      case "LOW": return "bg-green-100 text-green-700 border-green-200";
-      default: return "bg-slate-100 text-slate-700";
-    }
-  };
+  ];
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-[#FAFAFA]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 font-['Inter']">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Fatigue Analysis</h1>
-            <p className="text-slate-500 mt-1">Strategic workforce health and recovery monitoring</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-slate-200 bg-white text-slate-700" onClick={() => toast({ title: "Refreshing Data", description: "Calculating latest fatigue..." })}>
-              <Activity className="mr-2 h-4 w-4" />
-              Live Monitor
-            </Button>
-          </div>
-        </div>
+    <div className="p-8 bg-[#FAFAFA] min-h-screen">
+      <PageHeader 
+        title={
+          <span className="flex items-center gap-3">
+            <HeartPulse className="w-8 h-8 text-orange-500" /> Fatigue Analysis
+          </span>
+        }
+        subtitle="Strategic workforce health and recovery monitoring"
+      />
 
-        {!isEmployee && (
-          <Card className="p-8 bg-gradient-to-r from-slate-900 to-slate-800 border-none rounded-2xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-red-500 rounded-lg animate-pulse">
-                    <Brain className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="text-red-400 font-bold tracking-wider text-xs uppercase">AI Critical Focus</span>
-                </div>
-                <h2 className="text-3xl font-bold">Fatigue Risk Alert</h2>
-                <p className="text-slate-300 max-w-xl text-lg">
-                  <span className="text-white font-bold">{wellbeingSignals[0].count} employees</span> are showing high attrition risk patterns.
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
+      <KpiStrip items={kpis} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Card className="lg:col-span-4 p-8 bg-white border-slate-200 rounded-2xl shadow-sm flex flex-col items-center justify-center space-y-6">
-            <div className="relative">
-              <svg className="w-40 h-40 transform -rotate-90">
-                <circle cx="80" cy="80" r="70" stroke="#F1F5F9" strokeWidth="12" fill="none" />
-                <circle
-                  cx="80" cy="80" r="70" stroke={fatigueMetrics.riskLevel === 'CRITICAL' ? '#EF4444' : '#3B82F6'} strokeWidth="12" fill="none"
-                  strokeDasharray={`${2 * Math.PI * 70}`}
-                  strokeDashoffset={`${2 * Math.PI * 70 * (1 - (fatigueMetrics.overallScore || 0) / 100)}`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-5xl font-black text-slate-900 tracking-tighter">{fatigueMetrics.overallScore}</span>
-                <span className="text-slate-400 text-sm font-bold uppercase tracking-widest">Global Score</span>
-              </div>
-            </div>
-            <Badge className={`px-4 py-1 text-sm font-bold ${getRiskBadge(fatigueMetrics.riskLevel)}`}>
-              {fatigueMetrics.riskLevel} Fatigue Level
-            </Badge>
-          </Card>
-
-          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {keyIndicators.map((indicator) => (
-              <Card
-                key={indicator.id}
-                className="p-6 bg-white border-slate-200 rounded-2xl shadow-sm hover:border-blue-300 transition-all cursor-pointer group"
-                onClick={() => {
-                  setActiveModal('metric');
-                  setModalData(indicator);
-                }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-4 rounded-xl bg-slate-50 group-hover:bg-blue-50">
-                    <indicator.icon className="h-6 w-6 text-slate-600 group-hover:text-blue-600" />
-                  </div>
-                  <Badge className="bg-slate-50 text-slate-700">{indicator.change}% Delta</Badge>
-                </div>
-                <div className="mt-8">
-                  <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-1">{indicator.title}</p>
-                  <p className="text-4xl font-black text-slate-900 tracking-tight">{indicator.value}%</p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {!isEmployee && (
-          <Card className="border-slate-200 rounded-2xl overflow-hidden bg-white">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">Employee Fatigue Risk Matrix</h2>
-            </div>
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Workload</TableHead>
-                  <TableHead>Stress Vector</TableHead>
-                  <TableHead className="text-right">Risk</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayEmployees.map((emp) => (
-                  <TableRow key={emp.employeeId} onClick={() => setSelectedEmployee(emp)} className="cursor-pointer hover:bg-slate-50">
-                    <TableCell className="font-bold">{emp.name}</TableCell>
-                    <TableCell>{emp.scores?.utilization || 0}%</TableCell>
-                    <TableCell>{emp.scores?.fatigue || 0}% Intensity</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className={getRiskBadge(emp.scores?.fatigue >= 75 ? 'CRITICAL' : emp.scores?.fatigue >= 50 ? 'HIGH' : 'MEDIUM')}>
-                        {emp.scores?.fatigue >= 75 ? 'CRITICAL' : emp.scores?.fatigue >= 50 ? 'HIGH' : 'MEDIUM'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Fatigue Risk Matrix</h3>
+        <CompactTable 
+          columns={columns} 
+          data={paginatedData} 
+          onRowClick={(row) => setSelectedEmployee(row.employee)}
+        />
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalRecords={tableData.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
-      <Dialog open={activeModal === 'metric'} onOpenChange={() => setActiveModal(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{modalData?.title} Details</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-slate-600">{modalData?.definition}</p>
-            <div className="p-4 bg-blue-50 rounded-xl">
-              <h4 className="font-bold text-blue-900 text-sm mb-1">AI Recommendation</h4>
-              <p className="text-sm text-blue-800">{modalData?.recommendation}</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <EmployeeDrawer employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
+      <EmployeeDrawer 
+        employee={selectedEmployee} 
+        onClose={() => setSelectedEmployee(null)} 
+        defaultTab="fatigue"
+        contextData={{
+          fatigue: {
+            workloadIntensity: selectedEmployee?.scores?.utilization > 90 ? 'High' : 'Normal',
+            overtimeIndex: selectedEmployee?.scores?.fatigue > 75 ? 'Frequent' : 'Normal'
+          }
+        }}
+      />
     </div>
   );
 }

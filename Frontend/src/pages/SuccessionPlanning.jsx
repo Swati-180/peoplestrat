@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/manager/Pagination";
 import { Loader2, Users, Star, ArrowRight, UserPlus, BrainCircuit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchCriticalRoles, fetchSuccessionPlan, predictSuccessors } from "@/services/api";
@@ -14,6 +15,7 @@ export default function SuccessionPlanning() {
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [predicting, setPredicting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadRoles();
@@ -39,6 +41,7 @@ export default function SuccessionPlanning() {
       const res = await fetchSuccessionPlan(roleId);
       if (res.data.success) {
         setPlan(res.data.plan);
+        setCurrentPage(1);
       }
     } catch (error) {
       setPlan({ candidates: [] }); // No plan exists yet
@@ -87,7 +90,12 @@ export default function SuccessionPlanning() {
             </CardHeader>
             <CardContent className="space-y-2 p-4 pt-0">
               {loadingRoles ? <Loader2 className="w-6 h-6 animate-spin text-[#6D8196] mx-auto" /> : 
-                roles.length === 0 ? <p className="text-sm text-gray-500">No critical roles found.</p> :
+                roles.length === 0 ? (
+                  <div className="text-center py-4 text-slate-500">
+                    <p className="text-sm mb-2">No critical roles found.</p>
+                    <p className="text-xs text-slate-400">Use the API or seed script to create Job Descriptions with High criticality.</p>
+                  </div>
+                ) :
                 roles.map(role => (
                   <Button 
                     key={role._id} 
@@ -124,7 +132,7 @@ export default function SuccessionPlanning() {
                   <div className="flex justify-center items-center h-48"><Loader2 className="w-8 h-8 animate-spin text-[#6D8196]" /></div>
                 ) : plan.candidates?.length > 0 ? (
                   <div className="space-y-4">
-                    {plan.candidates.map((cand, i) => (
+                    {plan.candidates.slice((currentPage - 1) * 15, currentPage * 15).map((cand, i) => (
                       <div key={i} className="p-4 border border-[#E2E8F0] rounded-xl hover:shadow-sm transition-all bg-white flex flex-col gap-3">
                         <div className="flex justify-between items-start">
                           <div>
@@ -152,6 +160,13 @@ export default function SuccessionPlanning() {
                         )}
                       </div>
                     ))}
+                    <Pagination 
+                      currentPage={currentPage}
+                      totalPages={Math.ceil((plan.candidates?.length || 0) / 15)}
+                      totalRecords={plan.candidates?.length || 0}
+                      pageSize={15}
+                      onPageChange={setCurrentPage}
+                    />
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed border-[#E2E8F0] rounded-xl bg-gray-50/50">

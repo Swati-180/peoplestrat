@@ -59,9 +59,9 @@ export default function Settings() {
     const fte = deptEmployees.reduce((sum, emp) => sum + (emp.processes?.reduce((pSum, p) => pSum + p.hours, 0) || 0) / 160, 0);
     return {
       totalEmployees,
-      avgFitment: avgFitment.toFixed(1),
-      avgUtilization: avgUtilization.toFixed(1),
-      fte: fte.toFixed(1)
+      avgFitment: avgFitment.toFixed(2),
+      avgUtilization: avgUtilization.toFixed(2),
+      fte: fte.toFixed(2)
     };
   };
 

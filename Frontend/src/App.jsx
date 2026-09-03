@@ -43,6 +43,7 @@ import FlightRisk from "./pages/FlightRisk.jsx";
 import PeerFeedback from "./pages/PeerFeedback.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import UserManagement from "./pages/UserManagement.jsx";
 import NotFound from "./pages/not-found.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import PeopleStratLogo from "./components/PeopleStratLogo.jsx";
@@ -101,7 +102,7 @@ function ManagerRoute({ component: Component }) {
 
   if (!user) return null;
 
-  if ((user.role || "").toLowerCase() !== "manager") {
+  if (!["manager", "admin"].includes((user.role || "").toLowerCase())) {
     return (
       <div className="flex items-center justify-center h-screen text-center">
         <div className="max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
@@ -133,7 +134,7 @@ function AppRouter() {
       <Route path="/dashboard" component={() => (
         <ProtectedRoute component={() => {
           const { user } = useAuth();
-          return (user.role || "").toLowerCase() === "manager" ? <Dashboard /> : <EmployeeDashboard />;
+          return ["manager", "admin"].includes((user.role || "").toLowerCase()) ? <Dashboard /> : <EmployeeDashboard />;
         }} />
       )} />
       <Route path="/employees" component={() => <ManagerRoute component={Employees} />} />
@@ -163,6 +164,7 @@ function AppRouter() {
       />
       <Route path="/optimization" component={() => <ManagerRoute component={Optimization} />} />
       <Route path="/analytics" component={() => <ManagerRoute component={Analytics} />} />
+      <Route path="/users" component={() => <ManagerRoute component={UserManagement} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/documentation" component={() => <ProtectedRoute component={Documentation} />} />
       <Route path="/employee/data-form" component={() => <ProtectedRoute component={EmployeeDataForm} />} />

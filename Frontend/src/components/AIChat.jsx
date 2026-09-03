@@ -206,8 +206,13 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
                             {renderMessageContent(message)}
                           </div>
 
-                          <div className="text-xs opacity-70 mt-1">
-                            {message.timestamp.toLocaleTimeString()}
+                          <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
+                            <span>{message.timestamp.toLocaleTimeString()}</span>
+                            {message.isFallback && (
+                              <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-medium border border-amber-200">
+                                Rule-Based Fallback
+                              </span>
+                            )}
                           </div>
                         </div>
                         {message.type === "user" && (
@@ -313,8 +318,13 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
                         } break-words overflow-hidden`}
                       >
                         {renderMessageContent(message)}
-                        <div className={`text-[10px] mt-2 font-medium opacity-60 ${message.type === "user" ? "text-blue-100" : "text-slate-500"}`}>
-                          {message.timestamp.toLocaleString()}
+                        <div className={`text-[10px] mt-2 font-medium opacity-60 flex items-center gap-2 ${message.type === "user" ? "text-blue-100" : "text-slate-500"}`}>
+                          <span>{message.timestamp.toLocaleString()}</span>
+                          {message.isFallback && (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-medium border border-amber-200">
+                              Rule-Based Fallback
+                            </span>
+                          )}
                         </div>
                       </div>
                       {message.type === "user" && (

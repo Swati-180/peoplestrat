@@ -17,7 +17,8 @@ import Employee from './models/Employee.js';
 import PerformanceRecord from './models/PerformanceRecord.js';
 import FTEWorkload from './models/FTEWorkload.js';
 import AnalysisResult from './models/AnalysisResult.js';
-// Removed runAnalysis import to avoid potential circular/import issues during seed
+import PeerFeedback from './models/PeerFeedback.js';
+import JobDescription from './models/jobDescriptions.js';
 import { ROLE_SKILL_MAP, BAND_EXPERIENCE } from './services/fitmentEngine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -133,11 +134,14 @@ const seedDatabase = async () => {
       PerformanceRecord.deleteMany({}),
       FTEWorkload.deleteMany({}),
       AnalysisResult.deleteMany({}),
+      PeerFeedback.deleteMany({}),
+      JobDescription.deleteMany({}),
     ]);
     console.log('✓ Cleared existing data.');
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('pass1234', salt);
+    const seedPassword = process.env.ADMIN_PASSWORD || 'pass1234';
+    const hashedPassword = await bcrypt.hash(seedPassword, salt);
 
     // 1. Create Manager Account
     await User.create({
@@ -147,7 +151,18 @@ const seedDatabase = async () => {
       password: hashedPassword,
       role: 'manager',
     });
-    console.log('✓ Manager account created: manager@peoplestat.com / pass1234');
+    console.log(`✓ Manager account created: manager@peoplestat.com / [seeded password]`);
+
+    // 1.0.1 Create Admin User
+    await User.create({
+      name: 'System Admin',
+      username: 'admin',
+      email: 'admin@peoplestat.com',
+      password: hashedPassword,
+      role: 'admin',
+    });
+    console.log(`✓ Admin account created: admin@peoplestat.com / [seeded password]`);
+
 
     // 1.1 Create Demo Employee Account
     const demoEmpUser = await User.create({
@@ -181,7 +196,7 @@ const seedDatabase = async () => {
       skills: ['Excel', 'SAP', 'Financial Analysis', 'Process Optimization'],
       joiningDate: new Date(2021, 0, 15),
     });
-    console.log('✓ Demo employee account created: employee@peoplestat.com / pass1234');
+    console.log(`✓ Demo employee account created: employee@peoplestat.com / [seeded password]`);
 
     // 2. Load JSON Data
     const rawData = JSON.parse(readFileSync(JSON_FILE_PATH, 'utf8'));
@@ -296,6 +311,53 @@ const seedDatabase = async () => {
         recommendation_type: (y >= 5 && x >= 5) ? 'high_performer' : (employee.fatigueScore > 75) ? 'burnout_risk' : 'stable',
         analysis_date: new Date()
       });
+    }
+
+    // 4.1 Seed Job Descriptions (for Succession Planning)
+    console.log('Seeding Job Descriptions for Succession Planning...');
+    await JobDescription.create([
+      {
+        title: 'Senior Manager - FP&A',
+        department: 'Finance',
+        roleCriticality: 'High',
+        requiredSkills: ['Financial Analysis', 'Excel', 'Leadership', 'SAP'],
+        experienceRequired: 8
+      },
+      {
+        title: 'VP of Technology',
+        department: 'Technology',
+        roleCriticality: 'High',
+        requiredSkills: ['System Design', 'Strategic Planning', 'Leadership', 'Cloud Infrastructure'],
+        experienceRequired: 12
+      },
+      {
+        title: 'Operations Director',
+        department: 'Operations',
+        roleCriticality: 'High',
+        requiredSkills: ['Process Optimization', 'Team Management', 'Six Sigma'],
+        experienceRequired: 10
+      }
+    ]);
+
+    // 4.2 Seed Peer Feedback
+    console.log('Seeding Peer Feedback...');
+    const allEmployeesForFeedback = await Employee.find({});
+    if (allEmployeesForFeedback.length > 2) {
+      for (let i = 0; i < 20; i++) {
+        const source = faker.helpers.arrayElement(allEmployeesForFeedback);
+        let target = faker.helpers.arrayElement(allEmployeesForFeedback);
+        while (target._id.equals(source._id)) {
+          target = faker.helpers.arrayElement(allEmployeesForFeedback);
+        }
+        
+        await PeerFeedback.create({
+          sourceEmployeeId: source._id,
+          targetEmployeeId: target._id,
+          rating: faker.number.int({ min: 3, max: 5 }),
+          collaborationTags: faker.helpers.arrayElements(['Team Player', 'Innovative', 'Helpful', 'Problem Solver', 'Mentor', 'Communicator', 'Reliable', 'Leader'], 2),
+          date: faker.date.recent({ days: 30 })
+        });
+      }
     }
 
     // 5. Finalize
