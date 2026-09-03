@@ -18,6 +18,7 @@ import {
   Rocket,
   Sparkles,
   MessageSquare,
+  Briefcase
 } from "lucide-react";
 
 import {
@@ -128,6 +129,9 @@ export function AppSidebar() {
                   <NavItem item={{ title: "AI Career Coach", url: "/employee/career-coach", icon: Sparkles }} />
                   <NavItem item={{ title: "Peer Feedback", url: "/peer-feedback", icon: MessageSquare }} />
                   <NavItem item={{ title: "Employee Data Form", url: "/employee/data-form", icon: ClipboardList }} />
+                  <NavItem item={{ title: "Behavior Assessment", url: "/employee/behavior-assessment", icon: Target }} />
+                  <NavItem item={{ title: "Pulse Check", url: "/employee/pulse-check", icon: Activity }} />
+                  <NavItem item={{ title: "Resume Builder", url: "/employee/resume-builder", icon: Briefcase }} />
                 </>
               ) : (
                 insightsItems.map((item) => <NavItem key={item.title} item={item} />)

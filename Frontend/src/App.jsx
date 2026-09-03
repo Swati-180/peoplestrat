@@ -56,6 +56,9 @@ import FatigueWellbeing from "./pages/employee/FatigueWellbeing.jsx";
 import CareerGrowth from "./pages/employee/CareerGrowth.jsx";
 import EmployeeNotifications from "./pages/employee/EmployeeNotifications.jsx";
 import CareerCoach from "./pages/employee/CareerCoach.jsx";
+import BehaviorAssessment from "./pages/employee/BehaviorAssessment.jsx";
+import PulseCheck from "./pages/employee/PulseCheck.jsx";
+import ResumeBuilder from "./pages/employee/ResumeBuilder.jsx";
 
 
 /* ---------------- PROTECTED ROUTES ---------------- */
@@ -179,6 +182,9 @@ function AppRouter() {
       <Route path="/employee/career" component={() => <ProtectedRoute component={CareerGrowth} />} />
       <Route path="/employee/career-coach" component={() => <ProtectedRoute component={CareerCoach} />} />
       <Route path="/employee/notifications" component={() => <ProtectedRoute component={EmployeeNotifications} />} />
+      <Route path="/employee/behavior-assessment" component={() => <ProtectedRoute component={BehaviorAssessment} />} />
+      <Route path="/employee/pulse-check" component={() => <ProtectedRoute component={PulseCheck} />} />
+      <Route path="/employee/resume-builder" component={() => <ProtectedRoute component={ResumeBuilder} />} />
 
       <Route component={NotFound} />
     </Switch>

@@ -11,7 +11,7 @@ import {
 import { 
   Rocket, Waypoints, Award, Target, ChevronRight, 
   CheckCircle2, Circle, Star, Sparkles, Loader2, BarChart3,
-  User, Mail, MapPin, Zap, AlertTriangle, Brain, Briefcase
+  User, Mail, MapPin, Zap, AlertTriangle, Brain, Briefcase, FileText
 } from "lucide-react";
 
 export default function CareerGrowth() {
@@ -59,6 +59,12 @@ export default function CareerGrowth() {
           <p className="text-muted-foreground mt-2">Personalized promotion readiness and skill benchmarks</p>
         </div>
         <div className="flex gap-4">
+           <Button 
+            className="bg-emerald-600 hover:bg-emerald-700 font-bold px-6 py-2 rounded-xl shadow-lg shadow-emerald-100 transition-all hover:scale-[1.02] flex items-center gap-2 no-print"
+            onClick={() => window.location.href='/employee/resume-builder'}
+          >
+            <FileText className="h-5 w-5" /> Build Resume
+          </Button>
            <Button 
             className="bg-blue-600 hover:bg-blue-700 font-bold px-6 py-2 rounded-xl shadow-lg shadow-blue-100 transition-all hover:scale-[1.02] flex items-center gap-2 no-print"
             onClick={() => window.print()}
