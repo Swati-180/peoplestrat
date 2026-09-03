@@ -9,9 +9,10 @@ export function WorkforceProvider({ children }) {
   const [employees, setEmployees] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchEmployees = () => {
     if (user) {
-      api.get('/employees')
+      setIsLoading(true);
+      api.get('/employees?limit=all')
         .then(response => {
           const data = response.data?.success ? response.data.data : (Array.isArray(response.data) ? response.data : []);
           // Format strict backend models to adapt to frontend UI specs
@@ -47,6 +48,10 @@ export function WorkforceProvider({ children }) {
       setEmployees([]);
       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
   }, [user]);
 
   // Expose the helper functions globally
@@ -70,7 +75,7 @@ export function WorkforceProvider({ children }) {
   };
 
   return (
-    <WorkforceContext.Provider value={{ employees, isLoading, getOverallRisk, getFitmentBand, getFatigueRisk }}>
+    <WorkforceContext.Provider value={{ employees, isLoading, getOverallRisk, getFitmentBand, getFatigueRisk, fetchEmployees }}>
       {children}
     </WorkforceContext.Provider>
   );

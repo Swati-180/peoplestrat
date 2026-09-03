@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/manager/Pagination";
 import { Loader2, TrendingUp, BrainCircuit, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchPipelineLeaders, predictPipelineStage } from "@/services/api";
@@ -12,6 +13,7 @@ export default function LeadershipPipeline() {
   const [pipeline, setPipeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyzingIds, setAnalyzingIds] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadPipeline();
@@ -43,9 +45,10 @@ export default function LeadershipPipeline() {
           employeeId: e,
           stage: 'Unassigned',
           source: 'System'
-        }))];
-        setPipeline(newPipeline);
-      }
+          }))];
+          setPipeline(newPipeline);
+          setCurrentPage(1);
+        }
     } catch(err) { }
   }
 
@@ -93,7 +96,8 @@ export default function LeadershipPipeline() {
             <div className="flex justify-center items-center h-48"><Loader2 className="w-8 h-8 animate-spin text-[#6D8196]" /></div>
           ) : pipeline.length > 0 ? (
             <div className="space-y-4">
-              {pipeline.map((entry, index) => {
+              {pipeline.slice((currentPage - 1) * 15, currentPage * 15).map((entry, idx) => {
+                const index = (currentPage - 1) * 15 + idx;
                 const emp = entry.employeeId;
                 const empId = emp?._id || emp;
                 const isAnalyzing = analyzingIds[empId];
@@ -133,6 +137,13 @@ export default function LeadershipPipeline() {
                   </div>
                 );
               })}
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={Math.ceil(pipeline.length / 15)}
+                totalRecords={pipeline.length}
+                pageSize={15}
+                onPageChange={setCurrentPage}
+              />
             </div>
           ) : (
             <div className="text-center py-12 text-[#64748B]">No leaders currently in the pipeline.</div>

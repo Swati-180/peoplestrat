@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { 
   AlertTriangle, Zap, Clock, Activity, ShieldCheck, 
   Info, Bell, Loader2, Sparkles, AlertCircle, Heart 
@@ -61,9 +62,17 @@ export default function FatigueWellbeing() {
           </h1>
           <p className="text-muted-foreground mt-2">Personal workload balance and mental health markers</p>
         </div>
-        <div className="flex items-center gap-2 p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
-          <Clock className="h-5 w-5 text-indigo-500" />
-          <span className="text-sm font-bold text-slate-600">{data.overtimeHours} Overtime Hours this month</span>
+        <div className="flex gap-4">
+          <div className="flex items-center gap-2 p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+            <Clock className="h-5 w-5 text-indigo-500" />
+            <span className="text-sm font-bold text-slate-600">{data.overtimeHours} Overtime Hours this month</span>
+          </div>
+          <Button 
+            className="bg-rose-600 hover:bg-rose-700 h-full font-bold px-6 rounded-2xl shadow-sm shadow-rose-100 gap-2"
+            onClick={() => window.location.href='/employee/pulse-check'}
+          >
+            <Heart className="h-4 w-4" /> Take Pulse Check
+          </Button>
         </div>
       </div>
 

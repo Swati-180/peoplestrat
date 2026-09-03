@@ -65,6 +65,12 @@ export default function SkillsLearning() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Skills & Learning</h1>
           <p className="text-muted-foreground mt-1">Analyze skill gaps and plan your learning path</p>
+          <Button 
+            className="mt-4 bg-indigo-600 hover:bg-indigo-700 font-bold px-4 rounded-xl shadow-sm gap-2"
+            onClick={() => window.location.href='/employee/behavior-assessment'}
+          >
+            <Brain className="h-4 w-4" /> Take Behavior Assessment
+          </Button>
         </div>
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-6">
           <div className="text-center">

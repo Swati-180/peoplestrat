@@ -118,29 +118,20 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
-  const [activePortal, setActivePortal] = useState("manager");
+  const [activePortal, setActivePortal] = useState("unified");
   const [focusedField, setFocusedField] = useState(null);
 
   /* ─── Auth logic ─── */
-  const handleLogin = async (e, targetRole) => {
+  const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setIsLoading(true);
     setError("");
-    const roleToValidate = targetRole || activePortal;
     
     try {
       const loggedInUser = await login(usernameOrEmail, password);
-      if (loggedInUser && loggedInUser.role !== roleToValidate) {
-        localStorage.removeItem("mock_user");
-        setError(
-          `Wrong portal! This account is a registered "${loggedInUser.role}". Please use the correct section.`
-        );
-        setIsLoading(false);
-        return;
-      }
       toast({
         title: "Welcome back! 🎉",
-        description: `Redirecting to ${roleToValidate === "employee" ? "Employee" : "Manager"} Dashboard`,
+        description: `Redirecting to your Dashboard`,
       });
       setLocation("/dashboard", { replace: true });
     } catch (err) {
@@ -276,132 +267,109 @@ export default function Login() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* PORTAL SECTIONS */}
-            {[
-              { id: "manager", title: "Manager Portal", icon: <IconBriefcase />, color: "#f97316", gradient: "linear-gradient(135deg,#f97316,#dc2626)" },
-              { id: "employee", title: "Employee Portal", icon: <IconUser />, color: "#3b82f6", gradient: "linear-gradient(135deg,#3b82f6,#2563eb)" }
-            ].map((p) => {
-              const isActive = activePortal === p.id;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => !isActive && setActivePortal(p.id)}
+            {/* UNIFIED LOGIN PORTAL */}
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 20,
+                padding: "32px 36px",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.12)",
+                border: `2px solid #3b82f6`,
+                position: "relative",
+                overflow: "hidden"
+              }}
+            >
+              <div style={{
+                position: "absolute", top: -20, right: -20, width: 100, height: 100,
+                background: "#3b82f6", opacity: 0.05, borderRadius: "50%"
+              }} />
+
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                marginBottom: 24
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg,#3b82f6,#2563eb)",
+                    color: "#fff"
+                  }}>
+                    <IconLock />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: "#3b82f6", margin: 0 }}>
+                      Secure Login
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleLogin} style={{ animation: "fadeIn 0.4s ease" }}>
+                {error && (
+                  <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: 10, fontSize: 13, marginBottom: 16, border: "1px solid #fee2e2" }}>
+                    ⚠️ {error}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.02em" }}>Username or Email</label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: focusedField === "email" ? "#3b82f6" : "#94a3b8" }}><IconMail /></span>
+                    <input
+                      style={inputStyle("email", "#3b82f6")}
+                      value={usernameOrEmail}
+                      onChange={(e) => setUsernameOrEmail(e.target.value)}
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
+                      placeholder="Enter credentials"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.02em" }}>Password</label>
+                    <button type="button" onClick={() => setShowForgotPassword(true)} style={{ background: "none", border: "none", fontSize: 12, fontWeight: 600, color: "#3b82f6", cursor: "pointer", padding: 0 }}>Forgot?</button>
+                  </div>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: focusedField === "password" ? "#3b82f6" : "#94a3b8" }}><IconLock /></span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      style={inputStyle("password", "#3b82f6")}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => setFocusedField(null)}
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}
+                    >
+                      {showPassword ? <IconEyeOff /> : <IconEye />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
                   style={{
-                    background: "#fff",
-                    borderRadius: 20,
-                    padding: isActive ? "32px 36px" : "20px 28px",
-                    boxShadow: isActive ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.03)",
-                    border: `2px solid ${isActive ? p.color : "#e2e8f0"}`,
-                    transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-                    cursor: isActive ? "default" : "pointer",
-                    position: "relative",
-                    overflow: "hidden"
+                    width: "100%", padding: "14px", borderRadius: 12, fontSize: 15, fontWeight: 700,
+                    background: isLoading ? "#cbd5e1" : "linear-gradient(135deg,#3b82f6,#2563eb)",
+                    color: "#fff", border: "none", cursor: isLoading ? "not-allowed" : "pointer",
+                    boxShadow: isLoading ? "none" : `0 8px 16px rgba(59, 130, 246, 0.4)`,
+                    transition: "all 0.2s",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8
                   }}
                 >
-                  {/* Background Accent */}
-                  {isActive && (
-                    <div style={{
-                      position: "absolute", top: -20, right: -20, width: 100, height: 100,
-                      background: p.color, opacity: 0.05, borderRadius: "50%"
-                    }} />
-                  )}
-
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    marginBottom: isActive ? 24 : 0
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                      <div style={{
-                        width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                        background: isActive ? p.gradient : "#f1f5f9",
-                        color: isActive ? "#fff" : "#94a3b8",
-                        transition: "all 0.3s"
-                      }}>
-                        {p.icon}
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 18, fontWeight: 800, color: isActive ? p.color : "#1e293b", margin: 0 }}>
-                          {p.title}
-                        </h3>
-                        {!isActive && <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>Click to open portal</p>}
-                      </div>
-                    </div>
-                    {!isActive && <div style={{ color: "#cbd5e1" }}>→</div>}
-                  </div>
-
-                  {isActive && (
-                    <form onSubmit={(e) => handleLogin(e, p.id)} style={{ animation: "fadeIn 0.4s ease" }}>
-                      {/* Error in specific section */}
-                      {error && (
-                        <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: 10, fontSize: 13, marginBottom: 16, border: "1px solid #fee2e2" }}>
-                          ⚠️ {error}
-                        </div>
-                      )}
-
-                      {/* Email */}
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.02em" }}>Username or Email</label>
-                        <div style={{ position: "relative" }}>
-                          <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: focusedField === "email" ? p.color : "#94a3b8" }}><IconMail /></span>
-                          <input
-                            style={inputStyle("email", p.color)}
-                            value={usernameOrEmail}
-                            onChange={(e) => setUsernameOrEmail(e.target.value)}
-                            onFocus={() => setFocusedField("email")}
-                            onBlur={() => setFocusedField(null)}
-                            placeholder="Enter credentials"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Password */}
-                      <div style={{ marginBottom: 20 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                          <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.02em" }}>Password</label>
-                          <button type="button" onClick={() => setShowForgotPassword(true)} style={{ background: "none", border: "none", fontSize: 12, fontWeight: 600, color: p.color, cursor: "pointer", padding: 0 }}>Forgot?</button>
-                        </div>
-                        <div style={{ position: "relative" }}>
-                          <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: focusedField === "password" ? p.color : "#94a3b8" }}><IconLock /></span>
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            style={inputStyle("password", p.color)}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onFocus={() => setFocusedField("password")}
-                            onBlur={() => setFocusedField(null)}
-                            placeholder="••••••••"
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}
-                          >
-                            {showPassword ? <IconEyeOff /> : <IconEye />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        style={{
-                          width: "100%", padding: "14px", borderRadius: 12, fontSize: 15, fontWeight: 700,
-                          background: isLoading ? "#cbd5e1" : p.gradient,
-                          color: "#fff", border: "none", cursor: isLoading ? "not-allowed" : "pointer",
-                          boxShadow: isLoading ? "none" : `0 8px 16px ${p.color}40`,
-                          transition: "all 0.2s",
-                          display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-                        }}
-                      >
-                        {isLoading ? "Signing in..." : `Sign into ${p.id.charAt(0).toUpperCase() + p.id.slice(1)} Portal →`}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              );
-            })}
+                  {isLoading ? "Signing in..." : `Sign In →`}
+                </button>
+              </form>
+            </div>
           </div>
 
           {/* Bottom links */}
@@ -411,7 +379,8 @@ export default function Login() {
               border: "1px dashed #cbd5e1", marginBottom: 24
             }}>
               <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px", fontWeight: 600 }}>Demo Credentials</p>
-              <div style={{ display: "flex", gap: 20, justifyContent: "center", fontSize: 11, color: "#475569" }}>
+              <div style={{ display: "flex", gap: 14, justifyContent: "center", fontSize: 11, color: "#475569", flexWrap: "wrap" }}>
+                <span><strong>Admin:</strong> admin@peoplestat.com</span>
                 <span><strong>Mgr:</strong> manager@peoplestat.com</span>
                 <span><strong>Emp:</strong> employee@peoplestat.com</span>
               </div>

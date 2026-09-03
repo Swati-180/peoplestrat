@@ -30,6 +30,8 @@ const employeeSchema = new mongoose.Schema({
   teamwork: { type: Number, min: 0, max: 100, default: 0 },
   adaptability: { type: Number, min: 0, max: 100, default: 0 },
   creativity: { type: Number, min: 0, max: 100, default: 0 },
+  leadership: { type: Number, min: 0, max: 100, default: 0 },
+  resilience: { type: Number, min: 0, max: 100, default: 0 },
   
   // Role info
   currentRole: String,

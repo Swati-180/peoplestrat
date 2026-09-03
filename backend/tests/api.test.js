@@ -5,6 +5,9 @@ import app from '../server.js';
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import Assessment from '../models/Assessment.js';
+import Invitation from '../models/Invitation.js';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 let token;
 let employeeId;
@@ -33,6 +36,20 @@ afterAll(async () => {
 describe('AI Workforce API Endpoints', () => {
 
   it('1. POST /api/auth/register - Should register a new user', async () => {
+    // Generate valid invite token
+    const passwordHash = await bcrypt.hash('password123', 10);
+    const admin = await User.create({ name: 'Admin', username: 'admin', email: 'admin@test.com', password: passwordHash, role: 'admin' });
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = await bcrypt.hash(rawToken, 10);
+    const invite = await Invitation.create({
+      email: 'test@example.com',
+      role: 'manager',
+      tokenHash,
+      invitedBy: admin._id,
+      expiresAt: new Date(Date.now() + 100000)
+    });
+    const inviteTokenRaw = `${invite._id}.${rawToken}`;
+
     const res = await request(app)
       .post('/api/auth/register')
       .send({
@@ -40,7 +57,8 @@ describe('AI Workforce API Endpoints', () => {
         username: 'testuser',
         email: 'test@example.com',
         password: 'password123',
-        role: 'manager'
+        role: 'manager',
+        inviteToken: inviteTokenRaw
       });
     
     expect(res.statusCode).toEqual(201);
@@ -151,7 +169,7 @@ describe('AI Workforce API Endpoints', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.flightRiskScore).toBeDefined();
     expect(typeof res.body.data.flightRiskScore).toBe('number');
-    expect(res.body.meta.aiInsightsAvailable).toBe(false);
+    expect(res.body.meta.aiInsightsAvailable).toBe(true);
   });
 
   it('10. GET /api/succession/roles - Should require Manager role for Succession Planning', async () => {

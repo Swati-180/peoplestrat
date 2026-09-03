@@ -12,7 +12,51 @@ export const addEmployee = async (req, res) => {
 
 export const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find();
+    const { 
+      page = 1, 
+      limit = 15, 
+      search = '', 
+      department = '', 
+      fitmentMin = 0, 
+      fitmentMax = 100,
+      sortBy = 'name',
+      sortDir = 'asc'
+    } = req.query;
+
+    const query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { userid: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (department) {
+      query.department = department;
+    }
+    
+    // Fitment score filtering
+    const minFit = parseInt(fitmentMin, 10);
+    const maxFit = parseInt(fitmentMax, 10);
+    if (!isNaN(minFit) && !isNaN(maxFit) && (minFit > 0 || maxFit < 100)) {
+      query.fitmentScore = { $gte: minFit, $lte: maxFit };
+    }
+
+    const sortOptions = {};
+    if (sortBy) {
+      sortOptions[sortBy] = sortDir === 'desc' ? -1 : 1;
+    }
+
+    const limitVal = limit === 'all' ? 0 : parseInt(limit, 10);
+    const skip = limitVal === 0 ? 0 : (parseInt(page, 10) - 1) * limitVal;
+
+    const total = await Employee.countDocuments(query);
+    
+    let employeesQuery = Employee.find(query).sort(sortOptions);
+    if (limitVal > 0) {
+      employeesQuery = employeesQuery.skip(skip).limit(limitVal);
+    }
+    const employees = await employeesQuery;
+
     // Add backward compatibility for frontend pages expecting .scores object
     const formattedData = employees.map(emp => {
       const obj = emp.toObject();
@@ -26,7 +70,17 @@ export const getEmployees = async (req, res) => {
       };
       return obj;
     });
-    res.json({ success: true, data: formattedData });
+    
+    res.json({ 
+      success: true, 
+      data: formattedData,
+      pagination: {
+        total,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        totalPages: Math.ceil(total / parseInt(limit, 10))
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

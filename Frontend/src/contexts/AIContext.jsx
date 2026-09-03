@@ -62,6 +62,7 @@ export const AIProvider = ({ children }) => {
     try {
       const response = await chatWithAI(message, mode);
       const aiReply = response.data.data.reply;
+      const isFallback = response.data.data.isFallback;
 
       // Extract employee mentions for UI cards
       const employeeNames = Object.keys(workforceData);
@@ -81,7 +82,8 @@ export const AIProvider = ({ children }) => {
         content: aiReply,
         timestamp: new Date(),
         detectedEmployees: detectedEmployees,
-        queryType: detectedEmployees.length > 0 ? "employee_profile" : "general"
+        queryType: detectedEmployees.length > 0 ? "employee_profile" : "general",
+        isFallback: isFallback
       };
 
       setMessages(prev => [...prev, newMessage]);

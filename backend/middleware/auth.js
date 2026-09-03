@@ -46,12 +46,24 @@ export const protect = async (req, res, next) => {
 };
 
 export const managerOnly = (req, res, next) => {
-  if (req.user && (req.user.role || "").toLowerCase() === 'manager') {
+  const role = (req.user?.role || "").toLowerCase();
+  if (role === 'manager' || role === 'admin') {
     next();
   } else {
     res.status(403).json({
       success: false,
-      error: 'Access denied: Manager role required',
+      error: 'Access denied: Manager or Admin role required',
+    });
+  }
+};
+
+export const adminOnly = (req, res, next) => {
+  if (req.user && (req.user.role || "").toLowerCase() === 'admin') {
+    next();
+  } else {
+    res.status(403).json({
+      success: false,
+      error: 'Access denied: Admin role required',
     });
   }
 };

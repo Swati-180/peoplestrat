@@ -149,14 +149,34 @@ export const calculateDeterministicFlightRisk = (employee, perfRecords, wellbein
 export const generateLLMInsights = async (employee, score, riskLevel, perfRecords) => {
   try {
     const apiKey = process.env.GROQ_API_KEY;
+    const avgOT = perfRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0) / (perfRecords.length || 1);
+
+    const generateFallback = () => {
+      const factors = [];
+      const actionItems = [];
+
+      if (employee.fatigueScore > 70) {
+        factors.push("High fatigue score indicating potential burnout.");
+        actionItems.push({ action: "Schedule mandatory 1-on-1 to discuss workload", priority: "High", timeline: "1 week" });
+      }
+      if (employee.utilization > 85) {
+        factors.push("Over-utilization over extended period.");
+        actionItems.push({ action: "Reassign 15% of current tasks to peer", priority: "Medium", timeline: "2 weeks" });
+      }
+      if (factors.length === 0) {
+        factors.push("General disengagement indicators.");
+        actionItems.push({ action: "Conduct stay interview", priority: "Medium", timeline: "1 month" });
+      }
+
+      return { success: true, factors, actionItems };
+    };
+
     if (!apiKey) {
-      return { success: false, error: 'Groq API Key missing.' };
+      return generateFallback();
     }
     const groq = new Groq({ apiKey });
 
     // Payload for prompt
-    const avgOT = perfRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0) / (perfRecords.length || 1);
-
     const prompt = `You are the PeopleStrat HR AI.
 An employee named ${employee.name} (Role: ${employee.position}, Perf: ${employee.performance}) has a deterministically calculated Flight Risk Score of ${score}/100 (${riskLevel} Risk).
 Their current stats:
@@ -191,6 +211,24 @@ Return ONLY valid JSON matching this schema exactly:
     };
   } catch (error) {
     console.error('Groq LLM Error:', error);
-    return { success: false, error: error.message };
+    
+    // Deterministic fallback
+    const factors = [];
+    const actionItems = [];
+
+    if (employee.fatigueScore > 70) {
+      factors.push("High fatigue score indicating potential burnout.");
+      actionItems.push({ action: "Schedule mandatory 1-on-1 to discuss workload", priority: "High", timeline: "1 week" });
+    }
+    if (employee.utilization > 85) {
+      factors.push("Over-utilization over extended period.");
+      actionItems.push({ action: "Reassign 15% of current tasks to peer", priority: "Medium", timeline: "2 weeks" });
+    }
+    if (factors.length === 0) {
+      factors.push("General disengagement indicators.");
+      actionItems.push({ action: "Conduct stay interview", priority: "Medium", timeline: "1 month" });
+    }
+
+    return { success: true, factors, actionItems };
   }
 };

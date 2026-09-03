@@ -80,22 +80,28 @@ export function AuthProvider({ children }) {
   };
 
 
-  // MOCK REGISTER
-  const register = async (username, email, password, department, role) => {
-    const newUser = { username, email, password, department, role };
-    const registeredUsers = JSON.parse(localStorage.getItem("mock_registered_users") || "[]");
+  const register = async (username, email, password, department, role, inviteToken) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: username, username, email, password, role, inviteToken }),
+      });
 
-    if (registeredUsers.some(u => u.username === username || u.email === email)) {
-      throw new Error("User already exists");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("mock_user", JSON.stringify(data.user));
+      setUser(data.user);
+      return data.user;
+    } catch (error) {
+      console.error("Register error:", error);
+      throw error;
     }
-
-    registeredUsers.push(newUser);
-    localStorage.setItem("mock_registered_users", JSON.stringify(registeredUsers));
-
-    // Auto-login after registration
-    const { password: _, ...userWithoutPassword } = newUser;
-    localStorage.setItem("mock_user", JSON.stringify(userWithoutPassword));
-    setUser(userWithoutPassword);
   };
 
   const logout = () => {

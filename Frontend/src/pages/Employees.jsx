@@ -32,15 +32,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 
 import EmployeeDrawer from "@/components/EmployeeDrawer";
+import { Pagination } from "@/components/manager/Pagination";
 import { getOverallRisk } from "@/data/mockEmployeeData";
 import { getWorkforceKPIs, getAISignals } from "@/lib/workforce-utils";
 import { api } from "@/servicess/api";
-import { Loader2 } from "lucide-react";
+import { useWorkforceData } from "@/contexts/WorkforceContext";
+import { Loader2, ChevronLeft } from "lucide-react";
 
 // ---------------- PAGE ----------------
 export default function Employees() {
   const [, navigate] = useLocation();
+  const { employees: allEmployees } = useWorkforceData();
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [activeFilter, setActiveFilter] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
@@ -55,10 +60,23 @@ export default function Employees() {
 
   useEffect(() => {
     const loadEmployees = async () => {
+      setIsLoading(true);
       try {
-        const response = await api.get("/employees");
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 15,
+          search,
+          department: filters.department,
+          risk: filters.risk,
+          fitmentMin: filters.fitmentMin,
+          fitmentMax: filters.fitmentMax,
+          sortBy: sortConfig.key || '',
+          sortDir: sortConfig.dir
+        });
+        const response = await api.get(`/employees?${queryParams}`);
         if (response.data.success) {
           setEmployees(response.data.data);
+          setPagination(response.data.pagination || { total: 0, totalPages: 1 });
         }
       } catch (error) {
         console.error("Failed to fetch employees:", error);
@@ -71,10 +89,15 @@ export default function Employees() {
         setIsLoading(false);
       }
     };
-    loadEmployees();
-  }, []);
+    // Debounce search
+    const timer = setTimeout(() => {
+      loadEmployees();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [currentPage, search, filters, sortConfig]);
 
   const handleSort = (key) => {
+    setCurrentPage(1);
     setSortConfig(prev =>
       prev.key === key
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
@@ -87,8 +110,8 @@ export default function Employees() {
     return <span style={{ color: "#2563EB", fontSize: "10px", marginLeft: "4px" }}>{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
   };
 
-  const kpis = useMemo(() => getWorkforceKPIs(employees), [employees]);
-  const aiSignals = useMemo(() => getAISignals(employees), [employees]);
+  const kpis = useMemo(() => getWorkforceKPIs(allEmployees || []), [allEmployees]);
+  const aiSignals = useMemo(() => getAISignals(allEmployees || []), [allEmployees]);
 
   // Parse URL query parameters
   useState(() => {
@@ -141,47 +164,8 @@ export default function Employees() {
     },
   ], [kpis]);
 
-  const filtered = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isFatigueRisk = params.get("risk") === "fatigue";
-
-    return employees.filter((e) => {
-      const matchesSearch = (e.name || "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.employeeId || "").toLowerCase().includes(search.toLowerCase());
-      const matchesDept = !filters.department || e.department === filters.department;
-
-      // Handle the generic risk filter vs the specific fatigue redirection
-      let matchesRisk = !filters.risk || (getOverallRisk(e) || "").toUpperCase() === filters.risk;
-      if (isFatigueRisk && !filters.risk) {
-        matchesRisk = (e.scores?.fatigue || 0) >= 50;
-      }
-
-      const matchesFitMin = !filters.fitmentMin || (e.scores?.fitment || e.fitmentScore || 0) >= parseInt(filters.fitmentMin);
-      const matchesFitMax = !filters.fitmentMax || (e.scores?.fitment || e.fitmentScore || 0) <= parseInt(filters.fitmentMax);
-
-      return matchesSearch && matchesDept && matchesRisk && matchesFitMin && matchesFitMax;
-    });
-  }, [search, filters, employees]);
-
-  const sortedFiltered = useMemo(() => {
-    if (!sortConfig.key) return filtered;
-    const sorted = [...filtered].sort((a, b) => {
-      let aVal, bVal;
-      switch (sortConfig.key) {
-        case "name":       aVal = a.name; bVal = b.name; break;
-        case "position":   aVal = a.position; bVal = b.position; break;
-        case "department": aVal = a.department; bVal = b.department; break;
-        case "fitment":    aVal = a.scores?.fitment || a.fitmentScore || 0; bVal = b.scores?.fitment || b.fitmentScore || 0; break;
-        case "productivity": aVal = a.scores?.productivity || a.productivity || 0; bVal = b.scores?.productivity || b.productivity || 0; break;
-        case "utilization": aVal = a.scores?.utilization || a.utilization || 0; bVal = b.scores?.utilization || b.utilization || 0; break;
-        default: return 0;
-      }
-      if (aVal < bVal) return sortConfig.dir === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortConfig.dir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }, [filtered, sortConfig]);
+  // Handled on backend now, we just pass employees directly
+  const sortedFiltered = employees;
 
   const getFitmentColor = (score) => {
     if (score >= 85) return "bg-green-100 text-green-800";
@@ -318,7 +302,7 @@ export default function Employees() {
                 <select
                   className="w-full p-2 border border-[#E5E7EB] rounded-md"
                   value={filters.department}
-                  onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+                  onChange={(e) => { setFilters({ ...filters, department: e.target.value }); setCurrentPage(1); }}
                 >
                   <option value="">All Departments</option>
                   <option value="Engineering">Engineering</option>
@@ -335,7 +319,7 @@ export default function Employees() {
                 <select
                   className="w-full p-2 border border-[#E5E7EB] rounded-md"
                   value={filters.risk}
-                  onChange={(e) => setFilters({ ...filters, risk: e.target.value })}
+                  onChange={(e) => { setFilters({ ...filters, risk: e.target.value }); setCurrentPage(1); }}
                 >
                   <option value="">All Risk Levels</option>
                   <option value="HIGH">High Risk</option>
@@ -350,7 +334,7 @@ export default function Employees() {
                   placeholder="0"
                   className="w-full border-[#E5E7EB]"
                   value={filters.fitmentMin}
-                  onChange={(e) => setFilters({ ...filters, fitmentMin: e.target.value })}
+                  onChange={(e) => { setFilters({ ...filters, fitmentMin: e.target.value }); setCurrentPage(1); }}
                 />
               </div>
               <div>
@@ -360,12 +344,12 @@ export default function Employees() {
                   placeholder="100"
                   className="w-full border-[#E5E7EB]"
                   value={filters.fitmentMax}
-                  onChange={(e) => setFilters({ ...filters, fitmentMax: e.target.value })}
+                  onChange={(e) => { setFilters({ ...filters, fitmentMax: e.target.value }); setCurrentPage(1); }}
                 />
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <Button onClick={() => setFilters({ department: "", risk: "", fitmentMin: "", fitmentMax: "" })}>
+              <Button onClick={() => { setFilters({ department: "", risk: "", fitmentMin: "", fitmentMax: "" }); setCurrentPage(1); }}>
                 Clear Filters
               </Button>
               <Button variant="outline" onClick={() => setShowFilters(false)}>
@@ -388,7 +372,7 @@ export default function Employees() {
                     placeholder="Search employees..."
                     className="pl-9 w-64 border-[#E5E7EB]"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   />
                 </div>
                 <Button variant="outline" className="border-[#E5E7EB]" onClick={handleFilterToggle}>
@@ -398,38 +382,38 @@ export default function Employees() {
               </div>
             </div>
 
-            <table className="w-full text-sm">
-              <thead className="bg-[#F8FAFC]">
-                <tr className="border-b border-[#E5E7EB]">
-                  {[
-                    { key: "name", label: "Employee", align: "left" },
-                    { key: "position", label: "Role", align: "center" },
-                    { key: "department", label: "Department", align: "center" },
-                    { key: "fitment", label: "Fitment", align: "center" },
-                    { key: "productivity", label: "Productivity", align: "center" },
-                    { key: "utilization", label: "Utilization %", align: "center" },
-                    { key: "risk", label: "Risk", align: "center" },
-                  ].map(col => (
-                    <th
-                      key={col.key}
-                      className="p-3 font-medium"
-                      style={{
-                        textAlign: col.align,
-                        cursor: col.key !== "risk" ? "pointer" : "default",
-                        color: sortConfig.key === col.key ? "#2563EB" : "#0F172A",
-                        fontWeight: sortConfig.key === col.key ? 700 : 500,
-                        userSelect: "none",
-                        whiteSpace: "nowrap",
-                      }}
-                      onClick={() => col.key !== "risk" && handleSort(col.key)}
-                    >
-                      {col.label}
-                      {col.key !== "risk" && <SortIcon colKey={col.key} />}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-sm">
+                <thead className="bg-[#F8FAFC]">
+                  <tr className="border-b border-[#E5E7EB]">
+                    {[
+                      { key: "name", label: "Employee", align: "left" },
+                      { key: "position", label: "Role", align: "center" },
+                      { key: "department", label: "Department", align: "center" },
+                      { key: "fitment", label: "Fitment", align: "center" },
+                      { key: "productivity", label: "Productivity", align: "center" },
+                      { key: "utilization", label: "Utilization %", align: "center" },
+                      { key: "risk", label: "Risk", align: "center" },
+                    ].map(col => (
+                      <th
+                        key={col.key}
+                        className="p-3 font-medium whitespace-nowrap"
+                        style={{
+                          textAlign: col.align,
+                          cursor: col.key !== "risk" ? "pointer" : "default",
+                          color: sortConfig.key === col.key ? "#2563EB" : "#0F172A",
+                          fontWeight: sortConfig.key === col.key ? 700 : 500,
+                          userSelect: "none",
+                        }}
+                        onClick={() => col.key !== "risk" && handleSort(col.key)}
+                      >
+                        {col.label}
+                        {col.key !== "risk" && <SortIcon colKey={col.key} />}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
                 {sortedFiltered.length === 0 ? (
                   <tr><td colSpan={7}>
                     <EmptyState
@@ -442,33 +426,33 @@ export default function Employees() {
                   </td></tr>
                 ) : (
                   sortedFiltered.map((e) => (
-                    <tr key={e.employeeId} className="border-b border-[#E5E7EB] hover:bg-[#F8FAFC] cursor-pointer h-16" onClick={() => setSelectedEmployee(e)}>
-                      <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm uppercase">
+                    <tr key={e.employeeId} className="border-b border-[#E5E7EB] hover:bg-[#F8FAFC] cursor-pointer h-12" onClick={() => setSelectedEmployee(e)}>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs uppercase">
                             {(e.name || "UN").split(' ').map(n => n[0]).join('')}
                           </div>
                           <div>
-                            <p className="font-medium text-[#0F172A]">{e.name}</p>
-                            <p className="text-xs text-[#64748B]">{e.employeeId}</p>
+                            <p className="font-medium text-[#0F172A] leading-tight">{e.name}</p>
+                            <p className="text-[10px] text-[#64748B]">{e.employeeId}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-3 text-[#0F172A]">{e.position}</td>
-                      <td className="p-3 text-[#0F172A]">{e.department}</td>
-                      <td className="p-3">
-                        <Badge className={`font-medium ${getFitmentColor(e.scores?.fitment || e.fitmentScore || 0)}`}>
+                      <td className="p-2 text-[#0F172A]">{e.position}</td>
+                      <td className="p-2 text-[#0F172A]">{e.department}</td>
+                      <td className="p-2">
+                        <Badge className={`font-medium py-0 px-2 text-[10px] ${getFitmentColor(e.scores?.fitment || e.fitmentScore || 0)}`}>
                           {e.scores?.fitment || e.fitmentScore || 0}%
                         </Badge>
                       </td>
-                      <td className="p-3">
+                      <td className="p-2">
                         <div className="flex items-center gap-2">
-                          <Progress value={e.scores?.productivity || e.productivity || 0} className="w-20" />
-                          <span className="text-xs">{e.scores?.productivity || e.productivity || 0}%</span>
+                          <Progress value={e.scores?.productivity || e.productivity || 0} className="w-16 h-1.5" />
+                          <span className="text-[10px]">{e.scores?.productivity || e.productivity || 0}%</span>
                         </div>
                       </td>
-                      <td className="p-3 font-medium text-[#0F172A]">{e.scores?.utilization || e.utilization || 0}%</td>
-                      <td className="p-3">
+                      <td className="p-2 font-medium text-[#0F172A]">{e.scores?.utilization || e.utilization || 0}%</td>
+                      <td className="p-2">
                         {getRiskIcon(getOverallRisk(e))}
                       </td>
                     </tr>
@@ -476,17 +460,15 @@ export default function Employees() {
                 )}
               </tbody>
             </table>
-
-            <div className="flex justify-center mt-6">
-              <Button
-                variant="link"
-                className="text-[#2563EB] hover:text-[#1D4ED8]"
-                onClick={() => setShowAll(!showAll)}
-              >
-                {showAll ? "Show Less" : "View All Employees"}
-                <ChevronRight className={`h-4 w-4 ml-1 transition-transform ${showAll ? "rotate-90" : ""}`} />
-              </Button>
             </div>
+            
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              totalRecords={pagination.total}
+              pageSize={15}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </Card>
 
           {/* RIGHT SIDEBAR */}
@@ -514,7 +496,7 @@ export default function Employees() {
             <Card className="p-4 bg-white border-[#E5E7EB] rounded-xl shadow-sm">
               <h3 className="font-semibold text-[#0F172A] mb-4">Top 3 At-Risk Employees</h3>
               <div className="space-y-3">
-                {[...employees]
+                {(allEmployees || [])
                   .sort((a, b) => (b.scores?.fatigue || 0) - (a.scores?.fatigue || 0))
                   .slice(0, 3)
                   .map(emp => (
@@ -534,7 +516,7 @@ export default function Employees() {
             <Card className="p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm">
               <h3 className="font-semibold text-[#0F172A] mb-3">Promotion-Ready</h3>
               <div className="space-y-2 mb-4">
-                {employees
+                {(allEmployees || [])
                   .filter(e => (e.scores?.fitment || e.fitmentScore || 0) >= 85)
                   .slice(0, 2)
                   .map(emp => (

@@ -1,6 +1,8 @@
 import Employee from '../models/Employee.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import PerformanceRecord from '../models/PerformanceRecord.js';
+import BehavioralResult from '../models/BehavioralResult.js';
+import PulseCheck from '../models/PulseCheck.js';
 
 // Helper: find employee by logged-in user's email
 const findMyEmployee = async (req) => {
@@ -326,6 +328,158 @@ export const getMyNotifications = async (req, res) => {
     );
 
     res.json({ success: true, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// POST /api/employee/pulse-check
+export const submitPulseCheck = async (req, res) => {
+  try {
+    const emp = await findMyEmployee(req);
+    if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
+
+    const { stressLevel, workloadManageability, sleepQuality } = req.body;
+    
+    // Validate inputs (1-5)
+    if (![stressLevel, workloadManageability, sleepQuality].every(v => v >= 1 && v <= 5)) {
+      return res.status(400).json({ success: false, error: 'Invalid input values. Must be between 1 and 5.' });
+    }
+
+    // 1. Calculate subjective fatigue score (0-100)
+    // High stress (5) -> bad (100)
+    // High manageability (5) -> good (0) -> formula: (6 - workloadManageability)
+    // High sleep quality (5) -> good (0) -> formula: (6 - sleepQuality)
+    const subjectiveScore = ((stressLevel * 20) + ((6 - workloadManageability) * 20) + ((6 - sleepQuality) * 20)) / 3;
+
+    // 2. Fetch objective data
+    const records = await PerformanceRecord.find({ employee_id: emp._id }).sort({ record_date: -1 }).limit(30);
+    const totalOvertime = records.reduce((s, r) => s + (r.overtime_hours || 0), 0);
+    
+    // Calculate objective penalty (0-100, capped)
+    const overtimePenalty = Math.min((totalOvertime / 20) * 100, 100); 
+
+    // 3. Combined score
+    const fatigueScore = Math.round((subjectiveScore * 0.7) + (overtimePenalty * 0.3));
+
+    // 4. Save PulseCheck
+    const pulseCheck = new PulseCheck({
+      employeeId: emp._id,
+      stressLevel,
+      workloadManageability,
+      sleepQuality,
+      fatigueScore
+    });
+    await pulseCheck.save();
+
+    // 5. Update Employee record so Manager Portal sees it
+    emp.fatigueScore = fatigueScore;
+    await emp.save();
+
+    let riskLevel = 'Healthy';
+    let recommendation = 'Your workload balance looks healthy. Keep it up!';
+    if (fatigueScore >= 75) { 
+      riskLevel = 'Burnout Risk'; 
+      recommendation = 'Your stress levels are high. Consider taking a mental health day or discussing workload prioritization.';
+    }
+    else if (fatigueScore >= 50) { 
+      riskLevel = 'Moderate Fatigue';
+      recommendation = 'You are experiencing some fatigue. Try to ensure you are taking adequate breaks.';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        fatigueScore,
+        riskLevel,
+        recommendation
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// POST /api/employee/assessments/behavior
+export const submitBehaviorAssessment = async (req, res) => {
+  try {
+    const emp = await findMyEmployee(req);
+    if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
+
+    const { responses } = req.body;
+    if (!responses || !Array.isArray(responses) || responses.length === 0) {
+      return res.status(400).json({ success: false, error: 'No responses provided.' });
+    }
+
+    // A deterministic mapping of questions to traits.
+    // In a real app, this would be looked up from a DB collection of questions.
+    // For this implementation, we map based on question IDs or indices to demonstrate deterministic scoring.
+    const traitScores = {
+      communication: { total: 0, count: 0 },
+      leadership: { total: 0, count: 0 },
+      adaptability: { total: 0, count: 0 },
+      resilience: { total: 0, count: 0 },
+      teamwork: { total: 0, count: 0 }
+    };
+
+    const traitMap = {
+      'q1': 'communication', 'q2': 'communication',
+      'q3': 'leadership', 'q4': 'leadership',
+      'q5': 'adaptability', 'q6': 'adaptability',
+      'q7': 'resilience', 'q8': 'resilience',
+      'q9': 'teamwork', 'q10': 'teamwork'
+    };
+
+    // Calculate scores (1-5 Likert scale -> 20-100 score)
+    responses.forEach(r => {
+      if (r.value < 1 || r.value > 5) return; // bounds check
+      const trait = traitMap[r.questionId];
+      if (trait) {
+        traitScores[trait].total += (r.value * 20); // 5 -> 100, 4 -> 80, etc.
+        traitScores[trait].count += 1;
+      }
+    });
+
+    const finalScores = {
+      communication: traitScores.communication.count > 0 ? Math.round(traitScores.communication.total / traitScores.communication.count) : emp.communication || 0,
+      leadership: traitScores.leadership.count > 0 ? Math.round(traitScores.leadership.total / traitScores.leadership.count) : emp.leadership || 0,
+      adaptability: traitScores.adaptability.count > 0 ? Math.round(traitScores.adaptability.total / traitScores.adaptability.count) : emp.adaptability || 0,
+      resilience: traitScores.resilience.count > 0 ? Math.round(traitScores.resilience.total / traitScores.resilience.count) : emp.resilience || 0,
+      teamwork: traitScores.teamwork.count > 0 ? Math.round(traitScores.teamwork.total / traitScores.teamwork.count) : emp.teamwork || 0,
+    };
+
+    // Save result
+    const result = new BehavioralResult({
+      employeeId: emp._id,
+      scores: finalScores,
+      rawResponses: responses
+    });
+    await result.save();
+
+    // Update Employee profile
+    emp.communication = finalScores.communication;
+    emp.leadership = finalScores.leadership;
+    emp.adaptability = finalScores.adaptability;
+    emp.resilience = finalScores.resilience;
+    emp.teamwork = finalScores.teamwork;
+    
+    // Auto-update fitment based on new soft skills
+    const avgSoftSkills = (emp.communication + emp.leadership + emp.adaptability + emp.resilience + emp.teamwork) / 5;
+    const oldFitment = emp.fitmentScore || 50;
+    // Simple fitment update: 70% old fitment (technical/experience), 30% soft skills
+    emp.fitmentScore = Math.round((oldFitment * 0.7) + (avgSoftSkills * 0.3));
+
+    await emp.save();
+
+    res.json({
+      success: true,
+      data: {
+        scores: finalScores,
+        message: 'Behavioral profile updated successfully.'
+      }
+    });
+
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

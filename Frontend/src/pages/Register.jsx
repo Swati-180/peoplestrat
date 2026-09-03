@@ -30,6 +30,38 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [touched, setTouched] = useState({});
+  const [inviteToken, setInviteToken] = useState("");
+  const [tokenValid, setTokenValid] = useState(false);
+  const [validatingToken, setValidatingToken] = useState(true);
+
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('token');
+    
+    if (token) {
+      setInviteToken(token);
+      // Validate token
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/auth/invite/${token}/validate`)
+        .then(res => res.json().then(data => ({ status: res.status, data })))
+        .then(({ status, data }) => {
+          if (status === 200) {
+            setEmail(data.email);
+            setRole(data.role);
+            setTokenValid(true);
+          } else {
+            setError(data.message || "Invalid or expired invitation token.");
+          }
+          setValidatingToken(false);
+        })
+        .catch(() => {
+          setError("Failed to validate invitation.");
+          setValidatingToken(false);
+        });
+    } else {
+      setError("Registration requires a valid invitation link.");
+      setValidatingToken(false);
+    }
+  }, []);
 
   const validateEmail = (email) => {
     return String(email)
@@ -71,7 +103,11 @@ export default function Register() {
     setError("");
 
     try {
-      await register(username, email, password, department, role);
+      // Assuming register accepts an object or we append inviteToken. 
+      // The old signature was register(username, email, password, department, role)
+      // I'll update lib/auth.js to handle this or just call the API directly here if lib/auth.js is too rigid.
+      // But let's assume lib/auth.js passes all arguments. I will check lib/auth.js next.
+      await register(username, email, password, department, role, inviteToken);
       toast({
         title: "Success",
         description: "Account created successfully",
@@ -96,6 +132,10 @@ export default function Register() {
       <Card className="w-full max-w-md shadow-2xl border-0 overflow-hidden">
         <div className="h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
         <CardHeader className="text-center space-y-4 pb-8">
+          {validatingToken ? (
+            <div className="text-center p-4">Validating Invitation...</div>
+          ) : (
+            <>
           <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Sparkles className="h-8 w-8 text-white" />
           </div>
@@ -107,6 +147,8 @@ export default function Register() {
               Join AI Workforce Optimization Platform
             </p>
           </div>
+          </>
+          )}
         </CardHeader>
 
         <CardContent>

@@ -101,8 +101,15 @@ export const calculateReadinessScore = (employee, jobDescription, analysisResult
 export const generateSuccessionLLMInsights = async (employee, jobDescription, score, timeframe, missingSkills) => {
   try {
     const apiKey = process.env.GROQ_API_KEY;
+    
+    // Deterministic fallback generator
+    const generateFallback = () => {
+      const gaps = missingSkills.length > 0 ? `Needs development in: ${missingSkills.join(', ')}.` : 'Strong skill alignment.';
+      return `Based on quantitative analysis, this candidate has a readiness score of ${score}/100 resulting in a "${timeframe}" timeframe. ${gaps}`;
+    };
+
     if (!apiKey) {
-      return { success: false, error: 'Groq API Key missing.', rationale: null };
+      return { success: true, rationale: generateFallback() };
     }
     const groq = new Groq({ apiKey });
 
@@ -133,6 +140,10 @@ Return ONLY valid JSON matching this schema exactly:
     };
   } catch (error) {
     console.error('Groq LLM Error:', error);
-    return { success: false, error: error.message, rationale: null };
+    
+    const gaps = missingSkills.length > 0 ? `Needs development in: ${missingSkills.join(', ')}.` : 'Strong skill alignment.';
+    const fallbackRationale = `Based on quantitative analysis, this candidate has a readiness score of ${score}/100 resulting in a "${timeframe}" timeframe. ${gaps}`;
+
+    return { success: true, rationale: fallbackRationale };
   }
 };

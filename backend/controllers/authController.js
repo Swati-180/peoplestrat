@@ -2,18 +2,50 @@ import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+import Invitation from '../models/Invitation.js';
+
 // =====================
 // REGISTER
 // =====================
 export const register = async (req, res) => {
   try {
-    const { name, username, email, password, role } = req.body;
+    const { name, username, password, inviteToken } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Missing fields' });
+    if (!username || !password || !inviteToken) {
+      return res.status(400).json({ message: 'Missing fields. Registration requires an invitation token.' });
     }
 
-    // check if user exists
+    // Validate the token format
+    if (!inviteToken.includes('.')) {
+      return res.status(400).json({ message: 'Invalid invitation token format.' });
+    }
+    const [inviteId, rawToken] = inviteToken.split('.');
+
+    const invitation = await Invitation.findById(inviteId);
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found.' });
+    }
+
+    if (invitation.status !== 'pending') {
+      return res.status(400).json({ message: `Invitation is already ${invitation.status}.` });
+    }
+
+    if (new Date() > invitation.expiresAt) {
+      invitation.status = 'expired';
+      await invitation.save();
+      return res.status(400).json({ message: 'Invitation has expired.' });
+    }
+
+    const isMatch = await invitation.matchToken(rawToken);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid token.' });
+    }
+
+    // Use email and role from the invitation (ignoring any user-provided values)
+    const email = invitation.email;
+    const role = invitation.role;
+
+    // Double check user doesn't exist
     const existing = await User.findOne({
       $or: [
         { email: email.toLowerCase() },
@@ -32,10 +64,14 @@ export const register = async (req, res) => {
       username,
       email: email.toLowerCase(),
       password: hashed,
-      role: role || 'employee'
+      role
     });
 
     await user.save();
+
+    // Mark invitation as accepted
+    invitation.status = 'accepted';
+    await invitation.save();
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
       expiresIn: '7d'

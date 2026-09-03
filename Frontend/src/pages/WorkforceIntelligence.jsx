@@ -55,30 +55,29 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { Pagination } from "@/components/manager/Pagination";
 import { employees as initialEmployees } from "@/data/mockEmployeeData";
 import { api } from "@/services/api";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useWorkforceData } from "@/contexts/WorkforceContext";
 
 export default function WorkforceIntelligence() {
   const { toast } = useToast();
+  const { employees, isLoading: empLoading, fetchEmployees } = useWorkforceData();
   const [, navigate] = useLocation();
   const [activeSheet, setActiveSheet] = useState(null); // 'workforce', 'performance', 'utilization', 'salary'
   const [activeDialog, setActiveDialog] = useState(null); // 'skill-gap', 'productivity'
-  const [employees, setEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [deptSearch, setDeptSearch] = useState("");
   const [deptSort, setDeptSort] = useState({ key: 'headcount', dir: 'desc' });
   const [summary, setSummary] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [empRes, sumRes] = await Promise.all([
-          api.get("/employees"),
-          api.get("/analysis/summary")
-        ]);
-        if (empRes.data.success) setEmployees(empRes.data.data);
+        const sumRes = await api.get("/analysis/summary");
         if (sumRes.data.success) setSummary(sumRes.data.summary);
       } catch (error) {
         console.error("Failed to fetch workforce data:", error);
@@ -104,10 +103,7 @@ export default function WorkforceIntelligence() {
           description: `Successfully analyzed ${response.data.analyzedCount} employees.`,
         });
         // Reload employees to get updated scores
-        const empRes = await api.get("/employees");
-        if (empRes.data.success) {
-          setEmployees(empRes.data.data);
-        }
+        fetchEmployees();
       }
     } catch (error) {
       console.error("Analysis failed:", error);
@@ -146,7 +142,7 @@ export default function WorkforceIntelligence() {
       {
         id: "utilization",
         title: "Utilization Rate",
-        value: `${(employees.reduce((sum, e) => sum + (e.utilization || 0), 0) / employees.length).toFixed(1)}%`,
+        value: `${(employees.reduce((sum, e) => sum + (e.utilization || 0), 0) / employees.length).toFixed(2)}%`,
         change: "+12.8%",
         changeType: "up",
         icon: Activity,
@@ -155,7 +151,7 @@ export default function WorkforceIntelligence() {
       {
         id: "salary",
         title: "Salary Asset Value",
-        value: `$${(employees.reduce((sum, e) => sum + (e.salary || 0), 0) / 1000000).toFixed(1)}M`,
+        value: `$${(employees.reduce((sum, e) => sum + (e.salary || 0), 0) / 1000000).toFixed(2)}M`,
         change: "+8.3%",
         changeType: "up",
         icon: DollarSign,
@@ -273,7 +269,7 @@ export default function WorkforceIntelligence() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-6 font-['Inter']">
       <div className="max-w-7xl mx-auto space-y-8">
-        {isLoading && (
+        {(isLoading || empLoading) && (
           <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
@@ -381,7 +377,7 @@ export default function WorkforceIntelligence() {
                   type="text"
                   placeholder="Filter departments..."
                   value={deptSearch}
-                  onChange={(e) => setDeptSearch(e.target.value)}
+                  onChange={(e) => { setDeptSearch(e.target.value); setCurrentPage(1); }}
                   className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 md:w-64 bg-white"
                 />
               </div>
@@ -390,6 +386,7 @@ export default function WorkforceIntelligence() {
                 onChange={(e) => {
                   const [key, dir] = e.target.value.split('-');
                   setDeptSort({ key, dir });
+                  setCurrentPage(1);
                 }}
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[140px]"
               >
@@ -401,7 +398,7 @@ export default function WorkforceIntelligence() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {departmentOverview.map((dept, index) => (
+            {departmentOverview.slice((currentPage - 1) * 15, currentPage * 15).map((dept, index) => (
               <Card
                 key={index}
                 className="p-6 bg-white border-[#E5E7EB] rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-1"
@@ -443,6 +440,13 @@ export default function WorkforceIntelligence() {
               </Card>
             ))}
           </div>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={Math.ceil(departmentOverview.length / 15)}
+            totalRecords={departmentOverview.length}
+            pageSize={15}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Predictive Analytics */}

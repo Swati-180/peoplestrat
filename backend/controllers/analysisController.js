@@ -417,6 +417,37 @@ export const predictFlightRisk = async (req, res) => {
 };
 
 /**
+ * POST /api/analysis/predict-flight-risk-batch
+ * Calculates flight risk for all employees deterministically
+ */
+export const predictFlightRiskBatch = async (req, res) => {
+  try {
+    const employees = await Employee.find();
+    let processed = 0;
+    
+    for (const employee of employees) {
+      const perfRecords = await PerformanceRecord.find({ employee_id: employee._id }).sort({ record_date: -1 }).limit(30);
+      const wellbeingCheckins = await WellbeingCheckin.find({ employeeId: employee._id }).sort({ date: -1 }).limit(10);
+      
+      const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, wellbeingCheckins);
+      if (riskResult.success) {
+        await AnalysisResult.findOneAndUpdate(
+          { employee_id: employee._id },
+          { flightRiskScore: riskResult.score },
+          { upsert: true, new: true }
+        );
+        processed++;
+      }
+    }
+    
+    res.json({ success: true, processed });
+  } catch (error) {
+    console.error('Batch flight risk error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
  * GET /api/analysis/flight-risk/:employeeId
  * Retrieve stored flight risk for UI
  */

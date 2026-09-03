@@ -12,6 +12,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
 import bcrypt from 'bcryptjs';
+import Groq from 'groq-sdk';
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -375,3 +376,104 @@ export const getUploadStats = async (req, res) => {
 
 // Export multer middleware
 export const uploadMiddleware = upload.single('file');
+
+// Phase 2: Extract Resume Data (Preview)
+export const extractResumeData = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+    if (req.file.mimetype !== 'application/pdf') return res.status(400).json({ success: false, error: 'Only PDF files are supported' });
+    if (req.file.size > 5 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File size exceeds 5MB limit' });
+
+    // 1. Extract raw text from PDF
+    const data = await pdf(req.file.buffer);
+    const text = data.text;
+    
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Unreadable or empty PDF file' });
+    }
+
+    let extractedData = { skills: [], experience_years: 0 };
+    let usedGroq = false;
+
+    // 2. Try Groq AI extraction
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        const completion = await groq.chat.completions.create({
+          messages: [
+            { role: "system", content: "Extract technical and soft skills (as an array of strings) and total years of experience (as a number) from the following resume text. Respond ONLY with a valid JSON object with keys 'skills' and 'experience_years'." },
+            { role: "user", content: text.substring(0, 4000) } // Send first 4k chars to avoid token limits
+          ],
+          model: "llama3-8b-8192",
+          temperature: 0,
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        const parsed = JSON.parse(content);
+        
+        if (parsed && Array.isArray(parsed.skills) && typeof parsed.experience_years === 'number') {
+          extractedData = parsed;
+          usedGroq = true;
+        }
+      } catch (err) {
+        console.error("Groq extraction failed, falling back to deterministic:", err.message);
+      }
+    }
+
+    // 3. Fallback: Deterministic Regex Extraction
+    if (!usedGroq) {
+      const knownSkills = ['React', 'Node.js', 'JavaScript', 'Python', 'AWS', 'MongoDB', 'SQL', 'Docker', 'Leadership', 'Communication', 'Project Management'];
+      const textUpper = text.toUpperCase();
+      
+      const foundSkills = knownSkills.filter(skill => textUpper.includes(skill.toUpperCase()));
+      extractedData.skills = foundSkills;
+      
+      const expMatch = text.match(/([0-9]+)\+?\s*years?\s*(of)?\s*experience/i);
+      extractedData.experience_years = expMatch ? parseInt(expMatch[1]) : 0;
+    }
+
+    res.json({
+      success: true,
+      data: extractedData,
+      method: usedGroq ? 'ai' : 'deterministic'
+    });
+
+  } catch (error) {
+    console.error('Resume extraction error:', error);
+    res.status(500).json({ success: false, error: 'Failed to extract resume data' });
+  }
+};
+
+// Phase 2: Verify & Save Resume
+export const verifyAndSaveResume = async (req, res) => {
+  try {
+    const { skills, experience_years } = req.body;
+    
+    // Find authenticated employee
+    const email = req.user?.email;
+    if (!email) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    
+    const emp = await Employee.findOne({ email });
+    if (!emp) return res.status(404).json({ success: false, error: 'Employee not found' });
+
+    // Validate inputs
+    if (skills && Array.isArray(skills)) {
+      // Merge unique skills
+      const currentSkills = emp.skills || [];
+      const newSkills = skills.filter(s => typeof s === 'string').map(s => s.trim());
+      emp.skills = [...new Set([...currentSkills, ...newSkills])];
+    }
+    
+    if (experience_years !== undefined && typeof experience_years === 'number') {
+      emp.experience_years = experience_years;
+    }
+    
+    emp.updatedAt = new Date();
+    await emp.save();
+
+    res.json({ success: true, message: 'Profile updated successfully', data: { skills: emp.skills, experience_years: emp.experience_years } });
+  } catch (error) {
+    console.error('Resume verification error:', error);
+    res.status(500).json({ success: false, error: 'Failed to save resume data' });
+  }
+};

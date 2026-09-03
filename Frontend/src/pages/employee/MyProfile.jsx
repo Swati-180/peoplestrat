@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
   User, MapPin, Briefcase, Calendar, Award, Mail, Hash, Building2,
-  Edit3, Save, X, Plus, Loader2
+  Edit3, Save, X, Plus, Loader2, Upload
 } from "lucide-react";
+import ResumeUploadModal from "../../components/employee/ResumeUploadModal";
 
 export default function MyProfile() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export default function MyProfile() {
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [editData, setEditData] = useState({});
 
@@ -63,6 +65,18 @@ export default function MyProfile() {
     setEditData(p => ({ ...p, skills: p.skills.filter(s => s !== skill) }));
   };
 
+  const handleUploadSuccess = (updatedData) => {
+    setProfile(p => ({
+      ...p,
+      skills: updatedData.skills,
+      experience_years: updatedData.experience_years
+    }));
+    setEditData(p => ({
+      ...p,
+      skills: updatedData.skills
+    }));
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -91,9 +105,14 @@ export default function MyProfile() {
           <p className="text-muted-foreground mt-1">Personal and professional information</p>
         </div>
         {!isEditing ? (
-          <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2">
-            <Edit3 className="h-4 w-4" /> Edit Profile
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsUploadModalOpen(true)} variant="outline" className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+              <Upload className="h-4 w-4" /> Upload Resume
+            </Button>
+            <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2">
+              <Edit3 className="h-4 w-4" /> Edit Profile
+            </Button>
+          </div>
         ) : (
           <div className="flex gap-2">
             <Button onClick={handleSave} className="gap-2 bg-blue-600 hover:bg-blue-700">
@@ -213,6 +232,12 @@ export default function MyProfile() {
           )}
         </CardContent>
       </Card>
+      
+      <ResumeUploadModal 
+        isOpen={isUploadModalOpen} 
+        onClose={() => setIsUploadModalOpen(false)} 
+        onSuccess={handleUploadSuccess} 
+      />
     </div>
   );
 }
