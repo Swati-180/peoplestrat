@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPercentage, formatHours } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -118,7 +119,7 @@ export default function MyWorkPerformance() {
         />
         <KPIItem 
           title="Productivity" 
-          value={`${safeData.productivityScore}%`} 
+          value={formatPercentage(safeData.productivityScore)}
           icon={TrendingUp} 
           color="text-emerald-600" 
           bg="bg-emerald-50"
@@ -126,7 +127,7 @@ export default function MyWorkPerformance() {
         />
         <KPIItem 
           title="Utilization" 
-          value={`${safeData.utilizationPct}%`} 
+          value={formatPercentage(safeData.utilizationPct)}
           icon={Zap} 
           color="text-amber-600" 
           bg="bg-amber-50"
@@ -134,11 +135,11 @@ export default function MyWorkPerformance() {
         />
         <KPIItem 
           title="Work Hours" 
-          value={safeData.workHours} 
+          value={formatHours(safeData.workHours)}
           icon={Clock} 
           color="text-indigo-600" 
           bg="bg-indigo-50"
-          desc={`${safeData.overtimeHours} hours OT`}
+          desc={`${formatHours(safeData.overtimeHours)} OT`}
         />
       </div>
 
@@ -208,7 +209,7 @@ export default function MyWorkPerformance() {
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                     <span className="text-slate-600">{p.name}</span>
                   </div>
-                  <span className="font-semibold">{p.hours}h</span>
+                  <span className="font-semibold">{formatHours(p.hours)}</span>
                 </div>
               ))}
             </div>
@@ -237,14 +238,14 @@ export default function MyWorkPerformance() {
                   <tr key={record._id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-4 font-medium">{new Date(record.record_date).toLocaleDateString()}</td>
                     <td className="py-4 font-semibold text-slate-700">{record.tasks_completed}</td>
-                    <td className="py-4 text-slate-600">{record.working_hours}h</td>
+                    <td className="py-4 text-slate-600">{formatHours(record.working_hours)}</td>
                     <td className="py-4 text-slate-600">
-                      {Math.round((record.tasks_completed / (record.expected_tasks || 1)) * 100)}%
+                      {formatPercentage(record.tasks_completed / (record.expected_tasks || 1), true)}
                     </td>
                     <td className="py-4">
                       {record.overtime_hours > 0 ? (
                         <Badge variant="outline" className="text-amber-600 border-amber-100 bg-amber-50">
-                          +{record.overtime_hours}h OT
+                          +{formatHours(record.overtime_hours)} OT
                         </Badge>
                       ) : (
                         <span className="text-slate-400">—</span>

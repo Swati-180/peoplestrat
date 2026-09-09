@@ -53,7 +53,11 @@ export const inviteUser = async (req, res) => {
     const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/register?token=${inviteLinkToken}`;
 
     // Send real email (or Ethereal mock)
-    await sendInvitationEmail(email.toLowerCase(), role, inviteUrl);
+    const emailResult = await sendInvitationEmail(email.toLowerCase(), role, inviteUrl);
+
+    if (!emailResult || !emailResult.success) {
+      return res.status(500).json({ message: 'Failed to send invitation email. Please check SMTP configuration.' });
+    }
 
     res.status(201).json({ message: 'Invitation sent successfully.' });
   } catch (err) {
@@ -186,7 +190,11 @@ export const resendInvitation = async (req, res) => {
     const inviteLinkToken = `${newInvitation._id}.${rawToken}`;
     const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/register?token=${inviteLinkToken}`;
 
-    await sendInvitationEmail(newInvitation.email, newInvitation.role, inviteUrl);
+    const emailResult = await sendInvitationEmail(newInvitation.email, newInvitation.role, inviteUrl);
+
+    if (!emailResult || !emailResult.success) {
+      return res.status(500).json({ message: 'Failed to resend invitation email. Please check SMTP configuration.' });
+    }
 
     res.status(200).json({ success: true, message: 'Invitation resent successfully.', newInvitation });
   } catch (err) {

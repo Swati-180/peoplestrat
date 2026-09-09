@@ -70,7 +70,7 @@ describe('AI Workforce API Endpoints', () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({
-        identifier: 'testuser',
+        identifier: 'admin',
         password: 'password123'
       });
     

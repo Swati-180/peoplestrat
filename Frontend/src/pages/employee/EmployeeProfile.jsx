@@ -5,12 +5,12 @@ import api from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   User, Briefcase, MapPin, Users, Calendar,
   Star, TrendingUp, Award, Brain, Target,
   CheckCircle2, ArrowRight, Zap, Activity
 } from "lucide-react";
+import { formatPercentage } from "@/lib/formatters";
 
 // Small radar chart for the profile page
 function RadarChart({ data, size = 180 }) {
@@ -190,9 +190,9 @@ export default function EmployeeProfile() {
         {/* Mini KPIs in hero */}
         <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/20">
           {[
-            { label: "Fitment Score", value: profile.fitment + "%" },
-            { label: "Utilization", value: profile.utilization + "%" },
-            { label: "Fatigue Score", value: profile.fatigueScore + "%" },
+            { label: "Fitment Score", value: formatPercentage(profile.fitment) },
+            { label: "Utilization", value: formatPercentage(profile.utilization) },
+            { label: "Fatigue Score", value: formatPercentage(profile.fatigueScore) },
           ].map((item, i) => (
             <div key={i} className="text-center">
               <p className="text-2xl font-black">{item.value}</p>
@@ -253,7 +253,7 @@ export default function EmployeeProfile() {
               <div key={i} className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="font-semibold text-slate-600">{label}</span>
-                  <span className="font-black text-slate-800">{value}%</span>
+                  <span className="font-black text-slate-800">{formatPercentage(value)}</span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%`, transition: "width 0.5s ease" }} />

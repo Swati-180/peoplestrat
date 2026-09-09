@@ -1,7 +1,7 @@
 import express from 'express';
 import { runAnalysis, getAnalysisResults, getEmployeeAnalysis, getAnalysisSummary, predictFlightRisk, predictFlightRiskBatch, getFlightRisk, getGapAnalysis, getGapInterventions } from '../controllers/analysisController.js';
 import { chatAssistant } from '../controllers/aiController.js';
-import { protect, managerOnly } from '../middleware/auth.js';
+import { protect, managerOnly, adminOnly } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -12,22 +12,22 @@ router.use(protect);
 router.post('/run', managerOnly, runAnalysis);
 
 // GET /api/analysis/results — Get analysis results with filters
-router.get('/results', managerOnly, getAnalysisResults);
+router.get('/results', adminOnly, getAnalysisResults);
 
 // GET /api/analysis/summary — Workforce summary KPIs
-router.get('/summary', managerOnly, getAnalysisSummary);
+router.get('/summary', adminOnly, getAnalysisSummary);
 
 // GET /api/analysis/employee/:id — Get specific employee analysis
 router.get('/employee/:id', getEmployeeAnalysis);
 
 // POST /api/analysis/predict-flight-risk/:employeeId
-router.post('/predict-flight-risk/:employeeId', managerOnly, predictFlightRisk);
+router.post('/predict-flight-risk/:employeeId', adminOnly, predictFlightRisk);
 
 // POST /api/analysis/predict-flight-risk-batch
-router.post('/predict-flight-risk-batch', managerOnly, predictFlightRiskBatch);
+router.post('/predict-flight-risk-batch', adminOnly, predictFlightRiskBatch);
 
 // GET /api/analysis/flight-risk/:employeeId
-router.get('/flight-risk/:employeeId', managerOnly, getFlightRisk);
+router.get('/flight-risk/:employeeId', adminOnly, getFlightRisk);
 
 // GET /api/analysis/gaps — Deterministic gaps summary
 router.get('/gaps', managerOnly, getGapAnalysis);

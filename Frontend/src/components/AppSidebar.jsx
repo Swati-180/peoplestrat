@@ -46,18 +46,18 @@ const menuItems = [
 ];
 
 const insightsItems = [
-  { title: "Employees", url: "/employees", icon: Users },
-  { title: "User Management", url: "/users", icon: Users },
-  { title: "Fitment Analysis", url: "/fitment", icon: Target },
-  { title: "Softskills", url: "/softskills", icon: Brain },
-  { title: "Fatigue Analysis", url: "/fatigue", icon: AlertCircle },
-  { title: "Workforce Intelligence", url: "/workforce-intelligence", icon: Activity },
-  { title: "Gap Analysis", url: "/gap-analysis", icon: BarChart3 },
-  { title: "6x6 Workforce Analysis", url: "/six-by-six", icon: Layers },
-  { title: "Succession Planning", url: "/succession-planning", icon: Users },
-  { title: "Leadership Pipeline", url: "/leadership-pipeline", icon: Zap },
-  { title: "Flight Risk", url: "/flight-risk", icon: AlertCircle },
-  { title: "Peer Feedback", url: "/peer-feedback", icon: MessageSquare },
+  { title: "Employees", url: "/employees", icon: Users, roles: ["manager", "admin"] },
+  { title: "User Management", url: "/users", icon: Users, roles: ["manager", "admin"] },
+  { title: "Fitment Analysis", url: "/fitment", icon: Target, roles: ["admin"] },
+  { title: "Softskills", url: "/softskills", icon: Brain, roles: ["manager", "admin"] },
+  { title: "Fatigue Analysis", url: "/fatigue", icon: AlertCircle, roles: ["manager", "admin"] },
+  { title: "Workforce Intelligence", url: "/workforce-intelligence", icon: Activity, roles: ["admin"] },
+  { title: "Gap Analysis", url: "/gap-analysis", icon: BarChart3, roles: ["manager", "admin"] },
+  { title: "6x6 Workforce Analysis", url: "/six-by-six", icon: Layers, roles: ["admin"] },
+  { title: "Succession Planning", url: "/succession-planning", icon: Users, roles: ["admin"] },
+  { title: "Leadership Pipeline", url: "/leadership-pipeline", icon: Zap, roles: ["admin"] },
+  { title: "Flight Risk", url: "/flight-risk", icon: AlertCircle, roles: ["admin"] },
+  { title: "Peer Feedback", url: "/peer-feedback", icon: MessageSquare, roles: ["manager", "admin"] },
 ];
 
 const adminDataItems = [
@@ -134,14 +134,14 @@ export function AppSidebar() {
                   <NavItem item={{ title: "Resume Builder", url: "/employee/resume-builder", icon: Briefcase }} />
                 </>
               ) : (
-                insightsItems.map((item) => <NavItem key={item.title} item={item} />)
+                insightsItems.filter(item => item.roles.includes(role)).map((item) => <NavItem key={item.title} item={item} />)
               )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {/* ADMIN DATA SECTION */}
-        {role === "manager" && (
+        {role === "admin" && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-[10px] font-black tracking-[0.2em] text-sidebar-foreground/30 px-3 uppercase mb-2">Admin Data</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -153,7 +153,7 @@ export function AppSidebar() {
         )}
 
         {/* OPTIMIZATION SECTION */}
-        {role === "manager" && (
+        {role === "admin" && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-[10px] font-black tracking-[0.2em] text-sidebar-foreground/30 px-3 uppercase mb-2">Optimization</SidebarGroupLabel>
             <SidebarGroupContent>

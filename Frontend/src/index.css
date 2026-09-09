@@ -231,7 +231,7 @@
   background: #FFFFFF;
   border-radius: 12px;
   border: 1px solid #D4E5F7;
-  padding: 22px;
+  padding: 12px;
   box-shadow: 0 4px 16px rgba(56,73,89,0.07);
   cursor: pointer;
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
@@ -244,7 +244,7 @@
 }
 
 .kpi-metric-value {
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 700;
   color: #1E2D3D;
   line-height: 1.1;
@@ -295,7 +295,7 @@
 }
 
 .chart-card-header {
-  padding: 16px 22px 12px 22px;
+  padding: 10px 14px 8px 14px;
   border-bottom: 1px solid #EBF4FF;
   display: flex;
   align-items: center;
@@ -311,7 +311,7 @@
 }
 
 .chart-card-body {
-  padding: 14px 22px 20px 22px;
+  padding: 8px 14px 12px 14px;
 }
 
 /* ============================================================
@@ -325,7 +325,7 @@
 }
 
 .automation-savings-value {
-  font-size: 44px;
+  font-size: 24px;
   font-weight: 800;
   color: #1E2D3D;
   line-height: 1.1;
@@ -354,7 +354,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 22px;
+  padding: 8px 12px;
   cursor: pointer;
   border-bottom: 1px solid #EBF4FF;
   transition: background 0.15s ease;
@@ -478,13 +478,13 @@
    ============================================================ */
 
 .page-title {
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 700;
   color: #1E2D3D;
   line-height: 1.2;
 }
 
-.section-title  { font-size: 18px; font-weight: 600; color: #1E2D3D; }
+.section-title  { font-size: 14px; font-weight: 600; color: #1E2D3D; }
 .card-title-text{ font-size: 14px; font-weight: 600; color: #053259; }
 
 /* ============================================================

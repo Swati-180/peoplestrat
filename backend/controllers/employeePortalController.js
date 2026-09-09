@@ -422,6 +422,8 @@ export const submitBehaviorAssessment = async (req, res) => {
       resilience: { total: 0, count: 0 },
       teamwork: { total: 0, count: 0 }
     };
+    console.log('[BEHAVIOR DEBUG] NEW SCORING CODE ACTIVE');
+    console.log('[BEHAVIOR DEBUG] responses =', JSON.stringify(responses, null, 2));
 
     const traitMap = {
       'q1': 'communication', 'q2': 'communication',
@@ -430,24 +432,39 @@ export const submitBehaviorAssessment = async (req, res) => {
       'q7': 'resilience', 'q8': 'resilience',
       'q9': 'teamwork', 'q10': 'teamwork'
     };
+    console.log('[BEHAVIOR DEBUG] Backend traitMap:', traitMap);
 
     // Calculate scores (1-5 Likert scale -> 20-100 score)
     responses.forEach(r => {
-      if (r.value < 1 || r.value > 5) return; // bounds check
+      console.log(`[BEHAVIOR DEBUG] processing: questionId=${r.questionId}, responseValue=${r.responseValue}, typeof responseValue=${typeof r.responseValue}`);
+      if (r.responseValue < 1 || r.responseValue > 5) return; // bounds check
       const trait = traitMap[r.questionId];
       if (trait) {
-        traitScores[trait].total += (r.value * 20); // 5 -> 100, 4 -> 80, etc.
+        if (typeof r.responseValue !== 'number' || !Number.isFinite(r.responseValue)) {
+          throw new Error(`Invalid responseValue for question ${r.questionId}: ${r.responseValue}`);
+        }
+        traitScores[trait].total += (r.responseValue * 20); // 5 -> 100, 4 -> 80, etc.
         traitScores[trait].count += 1;
+        console.log(`[BEHAVIOR DEBUG] updated trait=${trait}, total=${traitScores[trait].total}, count=${traitScores[trait].count}`);
       }
     });
 
     const finalScores = {
-      communication: traitScores.communication.count > 0 ? Math.round(traitScores.communication.total / traitScores.communication.count) : emp.communication || 0,
-      leadership: traitScores.leadership.count > 0 ? Math.round(traitScores.leadership.total / traitScores.leadership.count) : emp.leadership || 0,
-      adaptability: traitScores.adaptability.count > 0 ? Math.round(traitScores.adaptability.total / traitScores.adaptability.count) : emp.adaptability || 0,
-      resilience: traitScores.resilience.count > 0 ? Math.round(traitScores.resilience.total / traitScores.resilience.count) : emp.resilience || 0,
-      teamwork: traitScores.teamwork.count > 0 ? Math.round(traitScores.teamwork.total / traitScores.teamwork.count) : emp.teamwork || 0,
+      communication: traitScores.communication.count > 0 ? Math.round(traitScores.communication.total / traitScores.communication.count) : (emp.communication || 0),
+      leadership: traitScores.leadership.count > 0 ? Math.round(traitScores.leadership.total / traitScores.leadership.count) : (emp.leadership || 0),
+      adaptability: traitScores.adaptability.count > 0 ? Math.round(traitScores.adaptability.total / traitScores.adaptability.count) : (emp.adaptability || 0),
+      resilience: traitScores.resilience.count > 0 ? Math.round(traitScores.resilience.total / traitScores.resilience.count) : (emp.resilience || 0),
+      teamwork: traitScores.teamwork.count > 0 ? Math.round(traitScores.teamwork.total / traitScores.teamwork.count) : (emp.teamwork || 0),
     };
+
+    console.log('[BEHAVIOR DEBUG] finalScores before BehavioralResult.create:', finalScores);
+
+    // Defensive validation before saving
+    for (const [trait, score] of Object.entries(finalScores)) {
+      if (!Number.isFinite(score)) {
+        throw new Error(`Calculation produced NaN for trait: ${trait}. Check traitScores or emp fallback. traitScores count: ${traitScores[trait]?.count}, total: ${traitScores[trait]?.total}, emp value: ${emp[trait]}`);
+      }
+    }
 
     // Save result
     const result = new BehavioralResult({

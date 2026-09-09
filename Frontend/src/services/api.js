@@ -16,6 +16,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 Unauthorized globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ─── Employee APIs ─────────────────────────────
 export const fetchEmployees = (params) => api.get("/employees", { params });
 export const fetchEmployeeStats = () => api.get("/employees/stats");

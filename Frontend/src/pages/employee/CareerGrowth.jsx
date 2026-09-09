@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPercentage } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -204,7 +205,7 @@ export default function CareerGrowth() {
                 <div>
                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Promotion Readiness</p>
                     <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-black text-slate-800">{data.promotionReadiness}%</span>
+                    <span className="text-4xl font-black text-slate-800">{formatPercentage(data.promotionReadiness)}</span>
                     <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
                         <Target size={12} /> Target 80%
                     </span>
@@ -253,7 +254,7 @@ function GrowthMetric({ label, value, color, icon: Icon }) {
         <Icon size={16} className={color} />
       </div>
       <div className="flex items-end gap-2">
-        <span className="text-2xl font-black text-slate-800">{value}%</span>
+        <span className="text-2xl font-black text-slate-800">{formatPercentage(value)}</span>
       </div>
       <div className="mt-4 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
         <div className={`h-full ${color.replace('text-', 'bg-')} transition-all`} style={{ width: `${value}%` }} />
@@ -267,7 +268,7 @@ function BenchmarkRow({ label, value, target }) {
     <div className="space-y-2">
       <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
         <span className="text-slate-500">{label}</span>
-        <span className="text-slate-800">{value}% <span className="text-slate-300">/ {target}%</span></span>
+        <span className="text-slate-800">{formatPercentage(value)} <span className="text-slate-300">/ {formatPercentage(target)}</span></span>
       </div>
       <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
         <div className="absolute top-0 left-0 h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${value}%` }} />

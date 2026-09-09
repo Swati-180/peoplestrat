@@ -46,8 +46,9 @@ export const getEmployees = async (req, res) => {
       sortOptions[sortBy] = sortDir === 'desc' ? -1 : 1;
     }
 
-    const limitVal = limit === 'all' ? 0 : parseInt(limit, 10);
-    const skip = limitVal === 0 ? 0 : (parseInt(page, 10) - 1) * limitVal;
+    const limitVal = limit === 'all' ? 0 : parseInt(limit, 10) || 15;
+    const pageVal = parseInt(page, 10) || 1;
+    const skip = limitVal === 0 ? 0 : (pageVal - 1) * limitVal;
 
     const total = await Employee.countDocuments(query);
     
@@ -71,14 +72,16 @@ export const getEmployees = async (req, res) => {
       return obj;
     });
     
+    const paginationLimit = limitVal === 0 ? total : limitVal;
+    
     res.json({ 
       success: true, 
       data: formattedData,
       pagination: {
         total,
-        page: parseInt(page, 10),
-        limit: parseInt(limit, 10),
-        totalPages: Math.ceil(total / parseInt(limit, 10))
+        page: pageVal,
+        limit: paginationLimit,
+        totalPages: paginationLimit > 0 ? Math.ceil(total / paginationLimit) : 1
       }
     });
   } catch (error) {

@@ -125,6 +125,44 @@ function ManagerRoute({ component: Component }) {
   return <Component />;
 }
 
+function AdminRoute({ component: Component }) {
+  const { user, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) navigate("/login");
+  }, [isLoading, user]);
+
+  if (isLoading)
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-medium text-slate-500 animate-pulse">Checking permissions...</p>
+      </div>
+    );
+
+  if (!user) return null;
+
+  if ((user.role || "").toLowerCase() !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-screen text-center">
+        <div className="max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
+          <div className="h-16 w-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-8 w-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-500 mb-8">
+            This section requires Admin level access. Please contact your administrator if you believe this is an error.
+          </p>
+          <Button onClick={() => window.location.href = "/"}>Return to Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return <Component />;
+}
+
 /* ---------------- APP ROUTER ---------------- */
 
 function AppRouter() {
@@ -141,13 +179,13 @@ function AppRouter() {
         }} />
       )} />
       <Route path="/employees" component={() => <ManagerRoute component={Employees} />} />
-      <Route path="/fitment" component={() => <ManagerRoute component={FitmentAnalysis} />} />
+      <Route path="/fitment" component={() => <AdminRoute component={FitmentAnalysis} />} />
       <Route path="/softskills" component={() => <ManagerRoute component={Softskills} />} />
       <Route path="/fatigue" component={() => <ManagerRoute component={Fatigue} />} />
-      <Route path="/workforce-intelligence" component={() => <ManagerRoute component={WorkforceIntelligence} />} />
-      <Route path="/succession-planning" component={() => <ManagerRoute component={SuccessionPlanning} />} />
-      <Route path="/leadership-pipeline" component={() => <ManagerRoute component={LeadershipPipeline} />} />
-      <Route path="/flight-risk" component={() => <ManagerRoute component={FlightRisk} />} />
+      <Route path="/workforce-intelligence" component={() => <AdminRoute component={WorkforceIntelligence} />} />
+      <Route path="/succession-planning" component={() => <AdminRoute component={SuccessionPlanning} />} />
+      <Route path="/leadership-pipeline" component={() => <AdminRoute component={LeadershipPipeline} />} />
+      <Route path="/flight-risk" component={() => <AdminRoute component={FlightRisk} />} />
       <Route path="/peer-feedback" component={() => <ProtectedRoute component={PeerFeedback} />} />
 
       {/* ✅ THIS ONE */}
@@ -158,20 +196,20 @@ function AppRouter() {
 
       <Route
         path="/ai-assistant"
-        component={() => <ManagerRoute component={AiEmployeeAssistant} />}
+        component={() => <AdminRoute component={AiEmployeeAssistant} />}
       />
 
       <Route
         path="/six-by-six"
-        component={() => <ManagerRoute component={SixBySixAnalysis} />}
+        component={() => <AdminRoute component={SixBySixAnalysis} />}
       />
-      <Route path="/optimization" component={() => <ManagerRoute component={Optimization} />} />
-      <Route path="/analytics" component={() => <ManagerRoute component={Analytics} />} />
+      <Route path="/optimization" component={() => <AdminRoute component={Optimization} />} />
+      <Route path="/analytics" component={() => <AdminRoute component={Analytics} />} />
       <Route path="/users" component={() => <ManagerRoute component={UserManagement} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/documentation" component={() => <ProtectedRoute component={Documentation} />} />
       <Route path="/employee/data-form" component={() => <ProtectedRoute component={EmployeeDataForm} />} />
-      <Route path="/upload-data" component={() => <ManagerRoute component={UploadData} />} />
+      <Route path="/upload-data" component={() => <AdminRoute component={UploadData} />} />
       <Route path="/add-employee" component={() => <ManagerRoute component={AddEmployee} />} />
       
       {/* Employee Portal Routes */}

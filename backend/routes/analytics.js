@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, adminOnly } from '../middleware/auth.js';
 import { getWorkforceSummary, getSkillGaps } from '../controllers/analyticsController.js';
 
 const router = express.Router();
@@ -8,9 +8,9 @@ const router = express.Router();
 router.use(protect);
 
 // GET /api/analytics/workforce-summary
-router.get('/workforce-summary', getWorkforceSummary);
+router.get('/workforce-summary', adminOnly, getWorkforceSummary);
 
 // GET /api/analytics/skill-gaps
-router.get('/skill-gaps', getSkillGaps);
+router.get('/skill-gaps', adminOnly, getSkillGaps);
 
 export default router;

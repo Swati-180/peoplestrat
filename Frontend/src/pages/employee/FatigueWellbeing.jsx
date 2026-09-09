@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPercentage, formatCount, formatDecimal } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,7 @@ export default function FatigueWellbeing() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-5xl font-black text-slate-800">{data.fatigueScore}</span>
+                <span className="text-5xl font-black text-slate-800">{formatCount(data.fatigueScore)}</span>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Score</span>
               </div>
             </div>
@@ -127,7 +128,7 @@ export default function FatigueWellbeing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <StatCard 
               label="Workload Utilization" 
-              value={`${data.utilizationPct}%`} 
+              value={formatPercentage(data.utilizationPct)}
               icon={Zap} 
               color="text-amber-500"
               bg="bg-amber-50"
@@ -135,7 +136,7 @@ export default function FatigueWellbeing() {
             />
             <StatCard 
               label="Recovery Capacity" 
-              value={`${100 - data.fatigueScore}%`} 
+              value={formatPercentage(100 - data.fatigueScore)}
               icon={Heart} 
               color="text-emerald-500" 
               bg="bg-emerald-50"
@@ -180,13 +181,13 @@ export default function FatigueWellbeing() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <InsightBlock 
           label="Performance Decline Correlation" 
-          value={`${data.performanceDecline}%`} 
+          value={formatPercentage(data.performanceDecline)}
           desc="Risk of output quality dropping due to persistent fatigue levels"
           color="text-rose-500"
         />
         <InsightBlock 
           label="Workload Intensity Index" 
-          value={data.workloadIntensity} 
+          value={formatDecimal(data.workloadIntensity)}
           desc="Complexity and stakeholder pressure relative to peer average"
           color="text-indigo-500"
         />
