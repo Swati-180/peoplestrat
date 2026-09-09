@@ -45,12 +45,25 @@ export default function BehaviorAssessment() {
   };
 
   const handleSubmit = async () => {
+    // Validation
+    const answeredCount = Object.keys(responses).length;
+    if (answeredCount !== 10) {
+      toast({ title: 'Validation Error', description: 'Please answer all 10 questions before completing the assessment.', variant: 'destructive' });
+      return;
+    }
+    
+    const allValid = Object.values(responses).every(v => Number.isInteger(v) && v >= 1 && v <= 5);
+    if (!allValid) {
+      toast({ title: 'Validation Error', description: 'Invalid responses detected.', variant: 'destructive' });
+      return;
+    }
+
     setIsSubmitting(true);
     
     // Format responses for API
     const formattedResponses = Object.keys(responses).map(key => ({
       questionId: key,
-      value: responses[key]
+      responseValue: responses[key]
     }));
 
     try {

@@ -21,9 +21,23 @@ export const protect = async (req, res, next) => {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      req.user = await User.findById(decoded.id).select('-password');
+      
+      const userId = decoded.id;
+      req.user = await User.findById(userId).select('-password');
 
       if (!req.user) {
+        console.log(`[AUTH DEBUG] User not found for JWT id: ${userId}`);
+        const dbName = req.user?.db?.name || (User.db && User.db.name) || 'unknown';
+        console.log(`[AUTH DEBUG] DB connected: ${dbName}`);
+        
+        // Find if any user exists in the DB at all
+        const anyUserCount = await User.countDocuments();
+        console.log(`[AUTH DEBUG] Total users in DB: ${anyUserCount}`);
+        
+        // See if employee_demo exists just to be sure
+        const demoUser = await User.findOne({ email: 'employee@peoplestat.com' });
+        console.log(`[AUTH DEBUG] employee@peoplestat.com exists in DB? ${!!demoUser}, ID: ${demoUser?._id}`);
+        
         return res.status(401).json({ success: false, error: 'User not found' });
       }
 

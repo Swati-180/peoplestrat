@@ -145,6 +145,7 @@ const seedDatabase = async () => {
 
     // 1. Create Manager Account
     await User.create({
+      _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'),
       name: 'Workforce Manager',
       username: 'manager_demo',
       email: 'manager@peoplestat.com',
@@ -155,6 +156,7 @@ const seedDatabase = async () => {
 
     // 1.0.1 Create Admin User
     await User.create({
+      _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439012'),
       name: 'System Admin',
       username: 'admin',
       email: 'admin@peoplestat.com',
@@ -166,6 +168,7 @@ const seedDatabase = async () => {
 
     // 1.1 Create Demo Employee Account
     const demoEmpUser = await User.create({
+      _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439013'),
       name: 'Demo Employee',
       username: 'employee_demo',
       email: 'employee@peoplestat.com',
@@ -220,10 +223,12 @@ const seedDatabase = async () => {
 
     // 4. Seed Employees from JSON
     console.log('Mapping JSON records to Employees...');
+    let uniqueCounter = 1;
     for (const record of rawData) {
       const fullName = faker.person.fullName();
-      const email = `${fullName.replace(/\s+/g, '').toLowerCase()}@employee.com`;
-      const username = email.split('@')[0];
+      const email = `${fullName.replace(/\s+/g, '').toLowerCase()}${uniqueCounter}@employee.com`;
+      const username = `${email.split('@')[0]}${uniqueCounter}`;
+      uniqueCounter++;
       
       // Create User
       const user = await User.create({

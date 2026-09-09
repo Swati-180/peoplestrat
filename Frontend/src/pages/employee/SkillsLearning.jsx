@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPercentage } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -75,12 +76,12 @@ export default function SkillsLearning() {
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-6">
           <div className="text-center">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Fitment</p>
-            <p className="text-2xl font-black text-blue-600">{data.fitmentScore}%</p>
+            <p className="text-2xl font-black text-blue-600">{formatPercentage(data.fitmentScore)}</p>
           </div>
           <div className="h-8 w-px bg-slate-100" />
           <div className="text-center">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Skill Match</p>
-            <p className="text-2xl font-black text-emerald-600">{data.skillMatchPct}%</p>
+            <p className="text-2xl font-black text-emerald-600">{formatPercentage(data.skillMatchPct)}</p>
           </div>
         </div>
       </div>
@@ -101,7 +102,7 @@ export default function SkillsLearning() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-slate-700">{skill.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-500">Proficiency: {skill.level}%</span>
+                      <span className="text-xs font-semibold text-slate-500">Proficiency: {formatPercentage(skill.level)}</span>
                       <div className="flex gap-0.5">
                         {[1, 2, 3, 4, 5].map(i => (
                           <Star key={i} className={`h-3 w-3 ${i <= Math.round(skill.level / 20) ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'}`} />
@@ -155,7 +156,7 @@ export default function SkillsLearning() {
               </h3>
               <p className="text-blue-100 text-sm leading-relaxed relative z-10">
                 You have {skillGaps.length} critical skill gaps for your current role. 
-                Focusing on these will improve your role fitment from <span className="font-bold text-white">{data.fitmentScore || 0}%</span> to over <span className="font-bold text-white">90%</span>.
+                Focusing on these will improve your role fitment from <span className="font-bold text-white">{formatPercentage(data.fitmentScore || 0)}</span> to over <span className="font-bold text-white">90%</span>.
               </p>
             </div>
           </CardContent>

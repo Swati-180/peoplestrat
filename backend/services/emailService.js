@@ -35,14 +35,14 @@ const createTransporter = async () => {
 
 export const sendInvitationEmail = async (toEmail, role, inviteUrl) => {
   if (process.env.NODE_ENV === 'test') {
-    return true; // Skip actual email in tests
+    return { success: true }; // Skip actual email in tests
   }
 
   try {
     const tp = await createTransporter();
 
     const mailOptions = {
-      from: '"PeopleStrat System" <no-reply@peoplestrat.com>',
+      from: process.env.SMTP_FROM || '"PeopleStrat System" <no-reply@peoplestrat.com>',
       to: toEmail,
       subject: `You have been invited to join PeopleStrat as a ${role}`,
       html: `

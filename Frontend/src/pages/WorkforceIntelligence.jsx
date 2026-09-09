@@ -61,6 +61,7 @@ import { api } from "@/services/api";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useWorkforceData } from "@/contexts/WorkforceContext";
+import { formatPercentage, formatCount, formatDecimal } from "@/lib/formatters";
 
 export default function WorkforceIntelligence() {
   const { toast } = useToast();
@@ -133,7 +134,7 @@ export default function WorkforceIntelligence() {
       {
         id: "performance",
         title: "Avg Performance Score",
-        value: avgPerf.toFixed(1),
+        value: formatDecimal(avgPerf),
         change: "+5.1%",
         changeType: "up",
         icon: Target,
@@ -142,7 +143,7 @@ export default function WorkforceIntelligence() {
       {
         id: "utilization",
         title: "Utilization Rate",
-        value: `${(employees.reduce((sum, e) => sum + (e.utilization || 0), 0) / employees.length).toFixed(2)}%`,
+        value: formatPercentage(employees.reduce((sum, e) => sum + (e.utilization || 0), 0) / employees.length),
         change: "+12.8%",
         changeType: "up",
         icon: Activity,
@@ -151,7 +152,7 @@ export default function WorkforceIntelligence() {
       {
         id: "salary",
         title: "Salary Asset Value",
-        value: `$${(employees.reduce((sum, e) => sum + (e.salary || 0), 0) / 1000000).toFixed(2)}M`,
+        value: `$${formatDecimal(employees.reduce((sum, e) => sum + (e.salary || 0), 0) / 1000000)}M`,
         change: "+8.3%",
         changeType: "up",
         icon: DollarSign,
@@ -420,14 +421,14 @@ export default function WorkforceIntelligence() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-[#64748B]">Performance Score</span>
-                      <span className="font-medium text-[#0F172A]">{dept.performance}%</span>
+                      <span className="font-medium text-[#0F172A]">{formatPercentage(dept.performance)}</span>
                     </div>
                     <Progress value={dept.performance} className="h-2" />
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-[#64748B]">Resource Utilization</span>
-                      <span className="font-medium text-[#0F172A]">{dept.utilization}%</span>
+                      <span className="font-medium text-[#0F172A]">{formatPercentage(dept.utilization)}</span>
                     </div>
                     <Progress value={dept.utilization} className="h-2" />
                   </div>
@@ -572,7 +573,7 @@ export default function WorkforceIntelligence() {
                     {employees.filter(e => (e.utilization || 0) > 90).map(e => (
                       <div key={e.employeeId} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                         <span className="text-sm font-medium">{e.name}</span>
-                        <Badge variant="destructive">{e.utilization || 0}%</Badge>
+                        <Badge variant="destructive">{formatPercentage(e.utilization || 0)}</Badge>
                       </div>
                     ))}
                   </div>
@@ -586,7 +587,7 @@ export default function WorkforceIntelligence() {
                     {employees.filter(e => (e.utilization || 0) < 60).map(e => (
                       <div key={e.employeeId} className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                         <span className="text-sm font-medium">{e.name}</span>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">{e.utilization || 0}%</Badge>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">{formatPercentage(e.utilization || 0)}</Badge>
                       </div>
                     ))}
                   </div>
@@ -607,7 +608,7 @@ export default function WorkforceIntelligence() {
                     {departmentOverview.map(d => (
                       <TableRow key={d.name}>
                         <TableCell className="font-medium">{d.name}</TableCell>
-                        <TableCell className="text-right font-semibold">${(d.salary / 1000).toFixed(0)}K</TableCell>
+                        <TableCell className="text-right font-semibold">${formatCount(d.salary / 1000)}K</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -618,7 +619,7 @@ export default function WorkforceIntelligence() {
                     <div>
                       <p className="text-xs uppercase font-bold text-orange-800 tracking-wider">Total Portfolio</p>
                       <p className="text-2xl font-black text-orange-900">
-                        ${(departmentOverview.reduce((sum, d) => sum + d.salary, 0) / 1000000).toFixed(2)}M
+                        ${formatDecimal(departmentOverview.reduce((sum, d) => sum + d.salary, 0) / 1000000)}M
                       </p>
                     </div>
                   </div>
@@ -649,7 +650,7 @@ export default function WorkforceIntelligence() {
                       <p className="font-medium text-sm">{e.name}</p>
                       <p className="text-xs text-slate-500">{e.department}</p>
                     </div>
-                    <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">{e.scores?.fitment || e.fitmentScore || 0}% Fit</Badge>
+                    <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">{formatPercentage(e.scores?.fitment || e.fitmentScore || 0)} Fit</Badge>
                   </div>
                 ))}
                 <Button className="w-full mt-4" onClick={() => navigate("/gap-analysis")}>Open Gap Analysis Portal</Button>
@@ -697,7 +698,7 @@ export default function WorkforceIntelligence() {
                       <Badge className="mt-1 bg-red-100 text-red-800 text-[10px]">{e.position}</Badge>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-red-600">{e.fatigueScore || 0}%</p>
+                      <p className="text-lg font-bold text-red-600">{formatPercentage(e.fatigueScore || 0)}</p>
                       <p className="text-[10px] text-slate-400 uppercase font-bold">Fatigue</p>
                     </div>
                   </div>

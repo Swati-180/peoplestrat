@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { api, submitPeerFeedback, getAggregatedPeerFeedback, getPeerFeedbackColleagues } from "@/services/api";
+import { useWorkforceData } from "@/contexts/WorkforceContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageSquare, Target, User, Users } from "lucide-react";
+import { Loader2, MessageSquare, Target, Users, X, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/manager/PageHeader";
+import { KpiStrip } from "@/components/manager/KpiStrip";
+import { CompactTable } from "@/components/manager/CompactTable";
+import { Pagination } from "@/components/manager/Pagination";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const COLLABORATION_TAGS = [
-  "Team Player",
-  "Innovative",
-  "Helpful",
-  "Problem Solver",
-  "Mentor",
-  "Communicator",
-  "Reliable",
-  "Leader",
+  "Team Player", "Innovative", "Helpful", "Problem Solver",
+  "Mentor", "Communicator", "Reliable", "Leader",
 ];
 
 export default function PeerFeedback() {
@@ -24,20 +24,172 @@ export default function PeerFeedback() {
 
   return (
     <div className="p-8 bg-[#FAFAFA] min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-[#1A232C] flex items-center gap-3">
-          <MessageSquare className="w-8 h-8 text-blue-600" /> 
-          Peer Feedback
-        </h1>
-        <p className="text-[#6D8196] mt-2">
-          {role === "manager" 
-            ? "View aggregated feedback and collaboration tags for your team." 
-            : "Submit feedback for your colleagues."}
-        </p>
-      </div>
-
-      {role === "manager" ? <ManagerView /> : <EmployeeView />}
+      <PageHeader 
+        title={
+          <span className="flex items-center gap-3">
+            <MessageSquare className="w-8 h-8 text-blue-600" /> 
+            Peer Feedback
+          </span>
+        }
+        subtitle={role === "manager" ? "View team feedback and share insights" : "Share feedback for your colleagues"}
+      />
+      {role === "manager" || role === "admin" ? <ManagerView /> : <EmployeeView />}
     </div>
+  );
+}
+
+function FeedbackDrawer({ employee, onClose }) {
+  const [feedbackData, setFeedbackData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (employee) {
+      setLoading(true);
+      getAggregatedPeerFeedback(employee._id || employee.id)
+        .then(res => {
+          if (res.data.success) setFeedbackData(res.data.data);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [employee]);
+
+  if (!employee) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex justify-end">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col font-['Inter'] animate-in slide-in-from-right duration-500">
+        <div className="p-6 border-b bg-gray-50 shrink-0">
+          <div className="flex items-center justify-between mb-4">
+             <h1 className="text-xs font-black text-gray-400 tracking-widest uppercase">Peer Feedback</h1>
+             <button onClick={onClose} className="hover:bg-gray-200 p-1 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
+              {(employee.name || "U").split(' ').map(n=>n[0]).join('').toUpperCase()}
+            </div>
+            <div>
+              <p className="font-bold text-lg text-gray-900 leading-tight">{employee.name}</p>
+              <p className="text-sm font-semibold text-blue-600 uppercase tracking-wide">{employee.position}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+           {loading ? <Loader2 className="w-8 h-8 animate-spin mx-auto mt-10 text-gray-400" /> : (
+             <>
+               <div className="bg-indigo-50 rounded-xl p-5 border border-indigo-100">
+                 <h3 className="font-bold text-indigo-900 mb-2">Aggregated Rating</h3>
+                 {feedbackData?.feedbackCount > 0 ? (
+                    <div>
+                      <span className="text-4xl font-black text-indigo-700">{feedbackData.averageRating}</span>
+                      <span className="text-xl text-indigo-400 ml-1">/ 5</span>
+                      <p className="text-sm text-indigo-600 mt-2">Based on {feedbackData.feedbackCount} feedback submissions</p>
+                    </div>
+                 ) : (
+                    <p className="text-sm text-indigo-600/80">No feedback available.</p>
+                 )}
+               </div>
+
+               <div>
+                 <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><Target className="w-4 h-4 text-emerald-500" /> Collaboration Tags</h4>
+                 {feedbackData?.uniqueTags?.length > 0 ? (
+                   <div className="flex flex-wrap gap-2">
+                     {feedbackData.uniqueTags.map(tag => (
+                       <Badge key={tag} className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                         {tag}
+                       </Badge>
+                     ))}
+                   </div>
+                 ) : (
+                   <p className="text-sm text-gray-500 italic">No collaboration tags available.</p>
+                 )}
+               </div>
+             </>
+           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ManagerView() {
+  const { employees, isLoading } = useWorkforceData();
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const tableData = useMemo(() => {
+    if (!employees) return [];
+    return employees.map(emp => ({
+      id: emp._id || emp.id,
+      employee: emp,
+      name: emp.name,
+      department: emp.department,
+      position: emp.position
+    }));
+  }, [employees]);
+
+  const pageSize = 15;
+  const totalPages = Math.ceil(tableData.length / pageSize);
+  const paginatedData = tableData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const columns = [
+    { header: "Employee", accessorKey: "name", className: "font-medium" },
+    { header: "Department", accessorKey: "department", className: "text-gray-500" },
+    { header: "Position", accessorKey: "position", className: "text-gray-500" },
+    { 
+      header: "Action", 
+      accessorKey: "action", 
+      cell: (row) => (
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedEmployee(row.employee); }}>
+          View &rarr;
+        </Button>
+      )
+    }
+  ];
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+  }
+
+  return (
+    <>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
+        <TabsList className="mb-6">
+          <TabsTrigger value="overview">Team Overview</TabsTrigger>
+          <TabsTrigger value="give-feedback">Give Feedback</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Employee Feedback Profiles</h3>
+            <p className="text-sm text-gray-500 mb-4">Select an employee to view their aggregated peer feedback, ratings, and collaboration tags.</p>
+            <CompactTable 
+              columns={columns} 
+              data={paginatedData} 
+              onRowClick={(row) => setSelectedEmployee(row.employee)}
+            />
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalRecords={tableData.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="give-feedback">
+          <EmployeeView />
+        </TabsContent>
+      </Tabs>
+
+      <FeedbackDrawer 
+        employee={selectedEmployee} 
+        onClose={() => setSelectedEmployee(null)} 
+      />
+    </>
   );
 }
 
@@ -48,7 +200,6 @@ function EmployeeView() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form State
   const [targetEmployeeId, setTargetEmployeeId] = useState("");
   const [rating, setRating] = useState(0);
   const [selectedTags, setSelectedTags] = useState([]);
@@ -59,17 +210,13 @@ function EmployeeView() {
 
   const loadData = async () => {
     try {
-      // 1. Get my employee ID (wrap in its own try/catch so failure doesn't break everything)
       try {
         const meRes = await api.get("/employee/me");
-        if (meRes.data.success) {
-          setMyEmployeeId(meRes.data.data._id);
-        }
+        if (meRes.data.success) setMyEmployeeId(meRes.data.data._id);
       } catch (meError) {
-        console.warn("Could not load own employee profile, continuing without self-filtering.");
+        console.warn("Could not load own profile");
       }
       
-      // 2. Get all employees for the dropdown
       const empRes = await getPeerFeedbackColleagues();
       if (empRes.data.success) {
         setEmployees(empRes.data.data);
@@ -94,12 +241,7 @@ function EmployeeView() {
 
     setSubmitting(true);
     try {
-      const res = await submitPeerFeedback({
-        targetEmployeeId,
-        rating,
-        collaborationTags: selectedTags
-      });
-
+      const res = await submitPeerFeedback({ targetEmployeeId, rating, collaborationTags: selectedTags });
       if (res.data.success) {
         toast({ title: "Success", description: "Feedback submitted successfully." });
         setTargetEmployeeId("");
@@ -114,18 +256,17 @@ function EmployeeView() {
     }
   };
 
-  // Filter out self
   const colleagues = employees.filter(emp => emp._id !== myEmployeeId);
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-[#6D8196]" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
   return (
-    <Card className="max-w-2xl">
+    <Card className="max-w-2xl bg-white shadow-sm border border-gray-200">
       <CardHeader>
         <CardTitle>Submit Feedback</CardTitle>
-        <CardDescription>Select a colleague and provide a rating and tags. Your identity will remain anonymous in the manager's view.</CardDescription>
+        <CardDescription>Select a colleague to provide anonymous peer feedback.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -175,130 +316,12 @@ function EmployeeView() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={submitting}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Submit Feedback
           </Button>
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-function ManagerView() {
-  const { toast } = useToast();
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
-  const [feedbackData, setFeedbackData] = useState(null);
-  const [fetchingFeedback, setFetchingFeedback] = useState(false);
-
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  const loadEmployees = async () => {
-    try {
-      const res = await getPeerFeedbackColleagues();
-      if (res.data.success) {
-        setEmployees(res.data.data);
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to load employees.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectEmployee = async (e) => {
-    const empId = e.target.value;
-    setSelectedEmployeeId(empId);
-    if (!empId) {
-      setFeedbackData(null);
-      return;
-    }
-
-    setFetchingFeedback(true);
-    try {
-      const res = await getAggregatedPeerFeedback(empId);
-      if (res.data.success) {
-        setFeedbackData(res.data.data);
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to load feedback data.", variant: "destructive" });
-      setFeedbackData(null);
-    } finally {
-      setFetchingFeedback(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-[#6D8196]" /></div>;
-  }
-
-  return (
-    <div className="space-y-6 max-w-4xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Employee</CardTitle>
-          <CardDescription>View aggregated peer feedback for an employee.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <select 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-            value={selectedEmployeeId}
-            onChange={handleSelectEmployee}
-          >
-            <option value="">-- Select an Employee --</option>
-            {employees.map(emp => (
-              <option key={emp._id} value={emp._id}>{emp.name} ({emp.position})</option>
-            ))}
-          </select>
-        </CardContent>
-      </Card>
-
-      {fetchingFeedback && (
-        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-[#6D8196]" /></div>
-      )}
-
-      {selectedEmployeeId && !fetchingFeedback && feedbackData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Target className="w-5 h-5 text-indigo-500" /> Aggregated Rating</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {feedbackData.feedbackCount > 0 ? (
-                <div className="space-y-2">
-                  <div className="text-4xl font-bold text-indigo-600">{feedbackData.averageRating} <span className="text-xl text-gray-400">/ 5</span></div>
-                  <p className="text-sm text-gray-500">Based on {feedbackData.feedbackCount} feedback submissions</p>
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">No feedback submitted yet.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Users className="w-5 h-5 text-emerald-500" /> Unique Tags</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {feedbackData.uniqueTags && feedbackData.uniqueTags.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {feedbackData.uniqueTags.map(tag => (
-                    <Badge key={tag} className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">No collaboration tags available.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
   );
 }

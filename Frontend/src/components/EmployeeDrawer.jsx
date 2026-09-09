@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { X, Brain, Wrench, AlertTriangle, ShieldCheck, Zap, Target, TrendingUp, Activity, User, BookOpen } from "lucide-react";
+import { X, Brain, Wrench, AlertTriangle, ShieldCheck, Zap, Target, TrendingUp, Activity, User, BookOpen, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts";
-import { getOverallRisk, getFitmentBand } from "@/data/mockEmployeeData";
 import { StatusBadge } from "@/components/manager/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
+
+function getFitmentBand(score) {
+  if (score >= 85) return "Overfit";
+  if (score >= 70) return "Fit";
+  if (score >= 50) return "Train-to-Fit";
+  return "Unfit";
+}
+
+function getOverallRisk(employee) {
+  if (!employee) return "Low";
+  const fatigue = employee.scores?.fatigue || employee.fatigueScore || 0;
+  const fitment = employee.scores?.fitment || employee.fitmentScore || 100;
+  if (fatigue >= 75 || fitment < 50) return "High";
+  if (fatigue >= 50 || fitment < 70) return "Medium";
+  return "Low";
+}
 
 export default function EmployeeDrawer({ employee, onClose, contextData = {}, defaultTab = "profile" }) {
   const { toast } = useToast();
@@ -23,12 +38,12 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
   const fitmentBand = getFitmentBand(employee.scores?.fitment || employee.fitmentScore || 0);
   const initials = (employee.name || "").split(' ').map(n => n[0]).join('').toUpperCase();
 
-  // Behavioral Data
-  const communication = employee.communication || employee.fitmentScore || 60;
-  const teamwork = employee.teamwork || Math.round(((employee.fitmentScore || 60) + (employee.productivity || 60)) / 2);
-  const adaptability = employee.adaptability || employee.productivity || 60;
-  const problemSolving = employee.problemSolving || Math.round((communication + 2 * (employee.productivity || 60)) / 3);
-  const creativity = employee.creativity || (100 - (employee.fatigueScore || 0));
+  // Behavioral Data (Real Backend Data)
+  const communication = employee.communication || 0;
+  const teamwork = employee.teamwork || 0;
+  const adaptability = employee.adaptability || 0;
+  const problemSolving = employee.problemSolving || 0;
+  const creativity = employee.creativity || 0;
 
   const behavioralData = [
     { skill: "Communication", value: communication },
@@ -38,11 +53,9 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
     { skill: "Creativity", value: creativity },
   ];
 
-  const avgSoftSkillScore = Math.round((communication + teamwork + adaptability + problemSolving + creativity) / 5);
-
   // Missing Skills
   const allPossibleSkills = ["Cloud Architecture", "Leadership", "Advanced SQL", "Public Speaking", "Strategic Planning", "Machine Learning"];
-  const establishedHardSkills = employee.skills || [];
+  const establishedHardSkills = Array.isArray(employee.skills) ? employee.skills : [];
   const missingSkills = allPossibleSkills.filter(s => !establishedHardSkills.includes(s)).slice(0, 3);
 
   // Strategic Insight Logic
@@ -155,7 +168,7 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
                   <ul className="space-y-2">
                     {contextData.risk.flightRiskFactors.map((factor, i) => (
                       <li key={i} className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-100">
-                        {factor}
+                        {typeof factor === 'string' ? factor : factor?.factor || factor?.name || JSON.stringify(factor)}
                       </li>
                     ))}
                   </ul>
@@ -172,7 +185,7 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
                   <ul className="space-y-2">
                     {contextData.risk.actionItems.map((action, i) => (
                       <li key={i} className="text-sm text-gray-600 bg-blue-50/50 p-3 rounded-md border border-blue-100">
-                        {action.action.replace('[Flight Risk] ', '')}
+                        {typeof action === 'string' ? action.replace('[Flight Risk] ', '') : (action?.action || '').replace('[Flight Risk] ', '')}
                       </li>
                     ))}
                   </ul>
@@ -308,6 +321,3 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
     </div>
   );
 }
-
-// Ensure the icon import works for ShieldAlert since it wasn't in original
-import { ShieldAlert } from "lucide-react";

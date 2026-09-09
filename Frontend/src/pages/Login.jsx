@@ -376,13 +376,26 @@ export default function Login() {
           <div style={{ marginTop: 32, textAlign: "center" }}>
             <div style={{
               padding: "16px", borderRadius: 16, background: "rgba(255,255,255,0.5)",
-              border: "1px dashed #cbd5e1", marginBottom: 24
+              border: "1px dashed #cbd5e1", marginBottom: 24, maxWidth: 420, marginInline: "auto"
             }}>
-              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px", fontWeight: 600 }}>Demo Credentials</p>
-              <div style={{ display: "flex", gap: 14, justifyContent: "center", fontSize: 11, color: "#475569", flexWrap: "wrap" }}>
-                <span><strong>Admin:</strong> admin@peoplestat.com</span>
-                <span><strong>Mgr:</strong> manager@peoplestat.com</span>
-                <span><strong>Emp:</strong> employee@peoplestat.com</span>
+              <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 12px", fontWeight: 700, textAlign: "center" }}>Demo Credentials</p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12, color: "#475569", textAlign: "left" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 8 }}>
+                  <span style={{ flex: "1 1 70px", fontWeight: 700, color: "#1e293b" }}>Admin</span>
+                  <span style={{ flex: "2 1 160px" }}>admin@peoplestat.com</span>
+                  <span style={{ flex: "1 1 60px", textAlign: "right", fontWeight: 600, color: "#64748b" }}>pass1234</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 8 }}>
+                  <span style={{ flex: "1 1 70px", fontWeight: 700, color: "#1e293b" }}>Manager</span>
+                  <span style={{ flex: "2 1 160px" }}>manager@peoplestat.com</span>
+                  <span style={{ flex: "1 1 60px", textAlign: "right", fontWeight: 600, color: "#64748b" }}>pass1234</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
+                  <span style={{ flex: "1 1 70px", fontWeight: 700, color: "#1e293b" }}>Employee</span>
+                  <span style={{ flex: "2 1 160px" }}>employee@peoplestat.com</span>
+                  <span style={{ flex: "1 1 60px", textAlign: "right", fontWeight: 600, color: "#64748b" }}>pass1234</span>
+                </div>
               </div>
             </div>
 
