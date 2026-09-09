@@ -15,3 +15,11 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: https://peoplestrat.vercel.app
+      - key: MAYAMAYA_API_KEY
+        sync: false
+      - key: MAYAMAYA_BASE_URL
+        value: https://developers-api-01.mayamaya.ai
+      - key: MAYAMAYA_WEBHOOK_URL
+        sync: false
+      - key: MAYAMAYA_EMBED_ORIGIN
+        value: https://peoplestrat.vercel.app

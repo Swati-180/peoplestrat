@@ -19,6 +19,7 @@ import pipelineRoutes from "./routes/pipelineRoutes.js";
 import employeePortalRoutes from './routes/employeePortalRoutes.js';
 import userRoutes from './routes/user.js';
 import peerFeedbackRoutes from './routes/peerFeedbackRoutes.js';
+import quizRoutes from './routes/quizRoutes.js';
 import seedDatabase from './seed.js';
 import User from './models/User.js';
 
@@ -41,7 +42,12 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
-app.use(express.json());
+// Preserve rawBody for MayaMaya webhook HMAC verification (mayamaya_plan.md §6).
+// constructWebhookEvent must receive the exact bytes MayaMaya sent.
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -67,6 +73,7 @@ app.use("/api/employee", employeePortalRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/feedback", peerFeedbackRoutes);
 app.use("/api/assessments", assessmentsRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // Fallback for old routes or additional ones if needed
 // app.use("/api/ai", aiRoutes); // I'll convert aiController to ESM if needed later
