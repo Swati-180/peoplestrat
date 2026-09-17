@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getMe } from '../controllers/authController.js';
+import { register, login, getMe, getMyOrganizations } from '../controllers/authController.js';
 import { protect, authorize, managerOnly, adminOnly } from '../middleware/auth.js';
 import { inviteUser, validateToken, getInvitations, cancelInvitation, resendInvitation } from '../controllers/invitationController.js';
 
@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getMe);
+router.get('/me/organizations', protect, getMyOrganizations);
 
 // Invitation Routes
 router.post('/invite', protect, authorize('manager', 'admin'), inviteUser);

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const performanceRecordSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   employee_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true, index: true },
   tasks_completed: { type: Number, required: true, default: 0 },
   expected_tasks: { type: Number, required: true, default: 1 },
@@ -13,5 +14,6 @@ const performanceRecordSchema = new mongoose.Schema({
 
 // Compound index for efficient querying
 performanceRecordSchema.index({ employee_id: 1, record_date: -1 });
+performanceRecordSchema.index({ organizationId: 1, employee_id: 1, record_date: -1 });
 
 export default mongoose.model('PerformanceRecord', performanceRecordSchema);

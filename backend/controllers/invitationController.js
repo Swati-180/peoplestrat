@@ -26,9 +26,9 @@ export const inviteUser = async (req, res) => {
       return res.status(400).json({ message: 'User already exists.' });
     }
 
-    // Invalidate existing pending invitations for this email
+    // Invalidate existing pending invitations for this email within this organization
     await Invitation.updateMany(
-      { email: email.toLowerCase(), status: 'pending' },
+      { email: email.toLowerCase(), status: 'pending', organizationId: req.organizationId },
       { status: 'expired' }
     );
 
@@ -41,6 +41,7 @@ export const inviteUser = async (req, res) => {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const invitation = await Invitation.create({
+      organizationId: req.organizationId,
       email: email.toLowerCase(),
       role,
       tokenHash,
@@ -112,6 +113,7 @@ export const getInvitations = async (req, res) => {
   try {
     const userRole = req.user.role.toLowerCase();
     let query = {};
+    if (req.organizationId) query.organizationId = req.organizationId;
     
     // Managers can only see invitations they sent
     if (userRole === 'manager') {
@@ -131,7 +133,7 @@ export const getInvitations = async (req, res) => {
 export const cancelInvitation = async (req, res) => {
   try {
     const { id } = req.params;
-    const invitation = await Invitation.findById(id);
+    const invitation = await Invitation.findOne({ _id: id, organizationId: req.organizationId });
     
     if (!invitation) {
       return res.status(404).json({ message: 'Invitation not found.' });
@@ -155,7 +157,7 @@ export const cancelInvitation = async (req, res) => {
 export const resendInvitation = async (req, res) => {
   try {
     const { id } = req.params;
-    const oldInvitation = await Invitation.findById(id);
+    const oldInvitation = await Invitation.findOne({ _id: id, organizationId: req.organizationId });
     
     if (!oldInvitation) {
       return res.status(404).json({ message: 'Invitation not found.' });
@@ -180,6 +182,7 @@ export const resendInvitation = async (req, res) => {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const newInvitation = await Invitation.create({
+      organizationId: req.organizationId,
       email: oldInvitation.email,
       role: oldInvitation.role,
       tokenHash,

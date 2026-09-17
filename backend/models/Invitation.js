@@ -6,9 +6,12 @@ const invitationSchema = new mongoose.Schema({
   role: { type: String, enum: ['employee', 'manager'], required: true },
   tokenHash: { type: String, required: true },
   status: { type: String, enum: ['pending', 'accepted', 'expired'], default: 'pending' },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   expiresAt: { type: Date, required: true }
 }, { timestamps: true });
+
+invitationSchema.index({ organizationId: 1, email: 1 });
 
 // Note: The actual raw token is NOT stored in the database, only the hash.
 // The user receives the raw token in the link.

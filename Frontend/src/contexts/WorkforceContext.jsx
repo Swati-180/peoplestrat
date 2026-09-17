@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "@/services/api";
 import { useAuth } from "@/lib/auth";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 const WorkforceContext = createContext(null);
 
 export function WorkforceProvider({ children }) {
   const { user } = useAuth();
+  const { activeOrganizationId, isLoading: orgLoading } = useOrganization();
   const [employees, setEmployees] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchEmployees = () => {
-    if (user) {
+    if (user && activeOrganizationId) {
       setIsLoading(true);
       api.get('/employees?limit=all')
         .then(response => {
@@ -44,7 +46,7 @@ export function WorkforceProvider({ children }) {
           setIsLoading(false);
         });
 
-    } else {
+    } else if (!orgLoading) {
       setEmployees([]);
       setIsLoading(false);
     }
@@ -52,7 +54,7 @@ export function WorkforceProvider({ children }) {
 
   useEffect(() => {
     fetchEmployees();
-  }, [user]);
+  }, [user, activeOrganizationId, orgLoading]);
 
   // Expose the helper functions globally
   const getOverallRisk = (emp) => {

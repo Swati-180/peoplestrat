@@ -10,7 +10,11 @@ export const submitFeedback = async (req, res) => {
     const { targetEmployeeId, rating, collaborationTags } = req.body;
 
     // Derive source from authenticated user
-    const sourceEmployeeId = req.user._id;
+    const sourceEmployee = await Employee.findOne({ email: req.user.email, organizationId: req.organizationId });
+    if (!sourceEmployee) {
+      return res.status(404).json({ success: false, error: 'Source employee record not found.' });
+    }
+    const sourceEmployeeId = sourceEmployee._id;
 
     if (!targetEmployeeId) {
       return res.status(400).json({ success: false, error: 'Target employee ID is required.' });
@@ -22,7 +26,7 @@ export const submitFeedback = async (req, res) => {
     }
 
     // Validate target employee exists
-    const targetEmployee = await Employee.findById(targetEmployeeId);
+    const targetEmployee = await Employee.findOne({ _id: targetEmployeeId, organizationId: req.organizationId });
     if (!targetEmployee) {
       return res.status(404).json({ success: false, error: 'Target employee not found.' });
     }
@@ -47,7 +51,8 @@ export const submitFeedback = async (req, res) => {
       targetEmployeeId,
       date: new Date(),
       rating,
-      collaborationTags: collaborationTags || []
+      collaborationTags: collaborationTags || [],
+      organizationId: req.organizationId
     });
 
     await feedback.save();
@@ -68,13 +73,13 @@ export const getAggregatedFeedback = async (req, res) => {
     const { employeeId } = req.params;
 
     // Verify target employee exists
-    const targetEmployee = await Employee.findById(employeeId);
+    const targetEmployee = await Employee.findOne({ _id: employeeId, organizationId: req.organizationId });
     if (!targetEmployee) {
       return res.status(404).json({ success: false, error: 'Target employee not found.' });
     }
 
     // Fetch all feedback for target
-    const feedbackList = await PeerFeedback.find({ targetEmployeeId: employeeId });
+    const feedbackList = await PeerFeedback.find({ targetEmployeeId: employeeId, organizationId: req.organizationId });
 
     if (feedbackList.length === 0) {
       return res.json({
@@ -124,7 +129,7 @@ export const getAggregatedFeedback = async (req, res) => {
  */
 export const getColleagues = async (req, res) => {
   try {
-    const colleagues = await Employee.find({}, '_id name position');
+    const colleagues = await Employee.find({ organizationId: req.organizationId }, '_id name position');
     res.json({ success: true, data: colleagues });
   } catch (error) {
     console.error('getColleagues error:', error);

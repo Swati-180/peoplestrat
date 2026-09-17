@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const analysisResultSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   employee_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true, index: true },
   productivity_score: { type: Number, default: 0, min: 0, max: 100 },
   utilization_score: { type: Number, default: 0, min: 0, max: 100 },
@@ -48,5 +49,6 @@ const analysisResultSchema = new mongoose.Schema({
 
 // Only keep the latest analysis per employee (or use for historical trend)
 analysisResultSchema.index({ employee_id: 1, analysis_date: -1 });
+analysisResultSchema.index({ organizationId: 1, employee_id: 1, analysis_date: -1 });
 
 export default mongoose.model('AnalysisResult', analysisResultSchema);

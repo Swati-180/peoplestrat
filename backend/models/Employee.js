@@ -4,9 +4,10 @@ const BANDS = ['OR', 'D3', 'D2', 'D1', 'M4', 'M3', 'M2', 'M1', 'L3', 'L2', 'L1']
 const PROCESS_AREAS = ['F&A', 'PSS', 'SAP'];
 
 const employeeSchema = new mongoose.Schema({
-  userid: { type: String, unique: true, sparse: true },
+  userid: { type: String, sparse: true },
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, sparse: true },
+  email: { type: String, required: true, sparse: true },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   department: String,
   position: String,
   band: { type: String, enum: BANDS },
@@ -76,5 +77,7 @@ const employeeSchema = new mongoose.Schema({
 // Indexes for common queries
 employeeSchema.index({ band: 1, process_area: 1 });
 employeeSchema.index({ department: 1 });
+employeeSchema.index({ organizationId: 1, email: 1 }, { unique: true });
+employeeSchema.index({ organizationId: 1, userid: 1 }, { unique: true });
 
 export default mongoose.model("Employee", employeeSchema);

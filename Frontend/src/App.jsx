@@ -7,6 +7,7 @@ import { TooltipProvider } from "./components/ui/tooltip.jsx";
 import { Toaster } from "./components/ui/toaster.jsx";
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar.jsx";
 import { AppSidebar } from "./components/AppSidebar.jsx";
+import { OrganizationSwitcher } from "./components/OrganizationSwitcher.jsx";
 
 import { NotificationPanel } from "./components/NotificationPanel.jsx";
 import { ProfileDropdown } from "./components/ProfileDropdown.jsx";
@@ -17,6 +18,7 @@ import { Button } from "./components/ui/button.jsx";
 import { cn } from "@/lib/utils";
 
 import { AuthProvider, useAuth } from "./lib/auth.jsx";
+import { OrganizationProvider, useOrganization } from "./contexts/OrganizationContext.jsx";
 import { WorkforceProvider } from "./contexts/WorkforceContext.jsx";
 import { AIProvider } from "./contexts/AIContext.jsx";
 import AIChat from "./components/AIChat.jsx";
@@ -88,14 +90,15 @@ function ProtectedRoute({ component: Component }) {
 }
 
 function ManagerRoute({ component: Component }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { activeRole, isLoading: orgLoading } = useOrganization();
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !user) navigate("/login");
-  }, [isLoading, user]);
+    if (!authLoading && !user) navigate("/login");
+  }, [authLoading, user]);
 
-  if (isLoading)
+  if (authLoading || orgLoading)
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -105,7 +108,7 @@ function ManagerRoute({ component: Component }) {
 
   if (!user) return null;
 
-  if (!["manager", "admin"].includes((user.role || "").toLowerCase())) {
+  if (!["manager", "admin"].includes((activeRole || "").toLowerCase())) {
     return (
       <div className="flex items-center justify-center h-screen text-center">
         <div className="max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
@@ -126,14 +129,15 @@ function ManagerRoute({ component: Component }) {
 }
 
 function AdminRoute({ component: Component }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { activeRole, isLoading: orgLoading } = useOrganization();
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !user) navigate("/login");
-  }, [isLoading, user]);
+    if (!authLoading && !user) navigate("/login");
+  }, [authLoading, user]);
 
-  if (isLoading)
+  if (authLoading || orgLoading)
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -143,7 +147,7 @@ function AdminRoute({ component: Component }) {
 
   if (!user) return null;
 
-  if ((user.role || "").toLowerCase() !== "admin") {
+  if ((activeRole || "").toLowerCase() !== "admin") {
     return (
       <div className="flex items-center justify-center h-screen text-center">
         <div className="max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
@@ -174,8 +178,8 @@ function AppRouter() {
 
       <Route path="/dashboard" component={() => (
         <ProtectedRoute component={() => {
-          const { user } = useAuth();
-          return ["manager", "admin"].includes((user.role || "").toLowerCase()) ? <Dashboard /> : <EmployeeDashboard />;
+          const { activeRole } = useOrganization();
+          return ["manager", "admin"].includes((activeRole || "").toLowerCase()) ? <Dashboard /> : <EmployeeDashboard />;
         }} />
       )} />
       <Route path="/employees" component={() => <ManagerRoute component={Employees} />} />
@@ -234,6 +238,7 @@ function AppRouter() {
 
 function AppContent() {
   const { user, isLoading } = useAuth();
+  const { activeRole } = useOrganization();
   const [location, navigate] = useLocation();
   const [isChatOpen, setIsChatOpen] = useState(false);
 
@@ -262,6 +267,7 @@ function AppContent() {
             <div className="flex items-center gap-4">
               <SidebarTrigger className="hover:bg-sidebar-accent hover:text-white transition-colors" />
               <div className="h-6 w-px bg-sidebar-border" />
+              <OrganizationSwitcher />
             </div>
 
             <div className="flex items-center gap-2 lg:gap-4">
@@ -302,7 +308,7 @@ function AppContent() {
       </div>
 
       {/* Floating AI Chat (Only for Managers) */}
-      {!isAuthPage && user?.role === "manager" && <AIChat isFloating={true} isOpen={isChatOpen} onToggle={() => setIsChatOpen(!isChatOpen)} />}
+      {!isAuthPage && activeRole === "manager" && <AIChat isFloating={true} isOpen={isChatOpen} onToggle={() => setIsChatOpen(!isChatOpen)} />}
     </SidebarProvider>
   );
 }
@@ -313,14 +319,16 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <WorkforceProvider>
-          <AIProvider>
-            <TooltipProvider>
-              <AppContent />
-              <Toaster />
-            </TooltipProvider>
-          </AIProvider>
-        </WorkforceProvider>
+        <OrganizationProvider>
+          <WorkforceProvider>
+            <AIProvider>
+              <TooltipProvider>
+                <AppContent />
+                <Toaster />
+              </TooltipProvider>
+            </AIProvider>
+          </WorkforceProvider>
+        </OrganizationProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

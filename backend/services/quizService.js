@@ -68,14 +68,14 @@ class QuizService {
     return this._requireClient().constructWebhookEvent(rawBody, headers);
   }
 
-  async saveInitiated(userId, quizLink, expiresInSeconds) {
+  async saveInitiated(userId, quizLink, expiresInSeconds, organizationId = null) {
     const objectId = toObjectId(userId);
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
     // Clear prior attempts so GET /summary reflects the latest link.
     await QuizResult.deleteMany({ userId: objectId });
     await QuizResult.create({
       userId: objectId,
-      organizationId: null,
+      organizationId: organizationId,
       status: 'initiated',
       quizLink,
       expiresAt,

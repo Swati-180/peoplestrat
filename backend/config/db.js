@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import 'dotenv/config';
+import fs from 'fs';
 
 const connectDB = async () => {
   try {
@@ -34,6 +35,7 @@ const connectDB = async () => {
     console.log(`[DATABASE] READY: Ephemeral In-Memory MongoDB Connected at ${uri}. NOTE: Data will be lost on restart.`);
     // expose URI for debugging other processes
     process.env.CURRENT_DB_URI = uri;
+    fs.writeFileSync('../mongo_uri.txt', uri);
 
   } catch (err) {
     console.error('[DATABASE] FATAL: Database Initialization failed:', err.message);

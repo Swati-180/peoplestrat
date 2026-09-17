@@ -8,8 +8,8 @@ import FTEWorkload from '../models/FTEWorkload.js';
 
 export const getWorkforceSummary = async (req, res) => {
   try {
-    const employees = await Employee.find();
-    const analyses = await AnalysisResult.find();
+    const employees = await Employee.find({ organizationId: req.organizationId });
+    const analyses = await AnalysisResult.find({ organizationId: req.organizationId });
 
     const totalEmployees = employees.length;
 
@@ -58,8 +58,8 @@ export const getWorkforceSummary = async (req, res) => {
 
 export const getSkillGaps = async (req, res) => {
   try {
-    const employees = await Employee.find();
-    const analyses = await AnalysisResult.find();
+    const employees = await Employee.find({ organizationId: req.organizationId });
+    const analyses = await AnalysisResult.find({ organizationId: req.organizationId });
 
     // Identify skill gaps by analyzing low-fitment employees
     const lowFitment = analyses.filter(a => a.fitment_score < 50);

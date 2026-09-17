@@ -10,7 +10,7 @@ import { calculatePipelineScore, generatePipelineLLMInsights } from '../services
  */
 export const getPipelineLeaders = async (req, res) => {
   try {
-    const pipeline = await LeadershipPipeline.find({}).populate('employeeId', 'name position department');
+    const pipeline = await LeadershipPipeline.find({ organizationId: req.organizationId }).populate('employeeId', 'name position department');
     res.json({ success: true, pipeline });
   } catch (error) {
     console.error('getPipelineLeaders error:', error);
@@ -26,15 +26,15 @@ export const predictPipelineStage = async (req, res) => {
   try {
     const { employeeId } = req.params;
     
-    const employee = await Employee.findById(employeeId);
+    const employee = await Employee.findOne({ _id: employeeId, organizationId: req.organizationId });
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found.' });
     }
 
-    const analysisResult = await AnalysisResult.findOne({ employee_id: employeeId });
+    const analysisResult = await AnalysisResult.findOne({ employee_id: employeeId, organizationId: req.organizationId });
     
     // Find all Leadership360 results for this employee
-    const leadership360Results = await Result.find({ employeeId }).populate({
+    const leadership360Results = await Result.find({ employeeId, organizationId: req.organizationId }).populate({
       path: 'assessmentId',
       match: { type: 'Leadership360' }
     });
@@ -79,14 +79,14 @@ export const updatePipelineStage = async (req, res) => {
     }
 
     // Check if employee exists
-    const employee = await Employee.findById(employeeId);
+    const employee = await Employee.findOne({ _id: employeeId, organizationId: req.organizationId });
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found.' });
     }
 
     // Re-run the predict logic to determine if this is AI Recommended or Manual Override
-    const analysisResult = await AnalysisResult.findOne({ employee_id: employeeId });
-    const leadership360Results = await Result.find({ employeeId }).populate({
+    const analysisResult = await AnalysisResult.findOne({ employee_id: employeeId, organizationId: req.organizationId });
+    const leadership360Results = await Result.find({ employeeId, organizationId: req.organizationId }).populate({
       path: 'assessmentId',
       match: { type: 'Leadership360' }
     });
@@ -100,12 +100,13 @@ export const updatePipelineStage = async (req, res) => {
     }
 
     // Persist to LeadershipPipeline schema
-    let pipelineEntry = await LeadershipPipeline.findOne({ employeeId });
+    let pipelineEntry = await LeadershipPipeline.findOne({ employeeId, organizationId: req.organizationId });
     if (!pipelineEntry) {
       pipelineEntry = new LeadershipPipeline({
         employeeId,
         stage,
-        source
+        source,
+        organizationId: req.organizationId
       });
     } else {
       pipelineEntry.stage = stage;

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import OrganizationMembership from '../models/OrganizationMembership.js';
 
 export const protect = async (req, res, next) => {
   let token;
@@ -13,13 +14,6 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      if (token.startsWith('demo-token-')) {
-        const role = token.split('-')[2];
-        // Create a mock user object for demo purposes
-        req.user = { id: 'demo-123', role: role, name: 'Demo User' };
-        return next();
-      }
-
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
       
       const userId = decoded.id;
@@ -27,18 +21,31 @@ export const protect = async (req, res, next) => {
 
       if (!req.user) {
         console.log(`[AUTH DEBUG] User not found for JWT id: ${userId}`);
-        const dbName = req.user?.db?.name || (User.db && User.db.name) || 'unknown';
-        console.log(`[AUTH DEBUG] DB connected: ${dbName}`);
-        
-        // Find if any user exists in the DB at all
-        const anyUserCount = await User.countDocuments();
-        console.log(`[AUTH DEBUG] Total users in DB: ${anyUserCount}`);
-        
-        // See if employee_demo exists just to be sure
-        const demoUser = await User.findOne({ email: 'employee@peoplestat.com' });
-        console.log(`[AUTH DEBUG] employee@peoplestat.com exists in DB? ${!!demoUser}, ID: ${demoUser?._id}`);
-        
         return res.status(401).json({ success: false, error: 'User not found' });
+      }
+
+      // Phase 2: Active Organization Context Verification
+      const requestedOrgId = req.headers['x-organization-id'] || req.body?.organizationId || req.query?.organizationId;
+      
+      if (requestedOrgId) {
+        // Validate Membership
+        const membership = await OrganizationMembership.findOne({
+          userId: req.user._id,
+          organizationId: requestedOrgId,
+          status: 'active'
+        });
+
+        if (!membership) {
+          return res.status(403).json({ 
+            success: false, 
+            error: 'Access denied: You are not a member of this organization.' 
+          });
+        }
+
+        // Expose Organization Context to Controllers
+        req.organizationId = requestedOrgId;
+        req.organizationRole = membership.role;
+        req.membership = membership;
       }
 
       next();
@@ -60,7 +67,9 @@ export const protect = async (req, res, next) => {
 };
 
 export const managerOnly = (req, res, next) => {
-  const role = (req.user?.role || "").toLowerCase();
+  // Use organization role if present, fallback to global role
+  const role = (req.organizationRole || req.user?.role || "").toLowerCase();
+  
   if (role === 'manager' || role === 'admin') {
     next();
   } else {
@@ -72,7 +81,9 @@ export const managerOnly = (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-  if (req.user && (req.user.role || "").toLowerCase() === 'admin') {
+  const role = (req.organizationRole || req.user?.role || "").toLowerCase();
+  
+  if (role === 'admin') {
     next();
   } else {
     res.status(403).json({
@@ -84,12 +95,22 @@ export const adminOnly = (req, res, next) => {
 
 export const authorize = (...roles) => {
   return (req, res, next) => {
-    const userRole = (req.user?.role || "").toLowerCase();
+    const role = (req.organizationRole || req.user?.role || "").toLowerCase();
     const authorizedRoles = roles.map(r => r.toLowerCase());
     
-    if (!req.user || !authorizedRoles.includes(userRole)) {
-      return res.status(403).json({ success: false, error: `Role ${req.user ? req.user.role : 'unauthenticated'} is not authorized to access this route` });
+    if (!req.user || !authorizedRoles.includes(role)) {
+      return res.status(403).json({ 
+        success: false, 
+        error: `Role ${role || 'unauthenticated'} is not authorized to access this route` 
+      });
     }
     next();
   };
+};
+
+export const requireOrganization = (req, res, next) => {
+  if (!req.organizationId) {
+    return res.status(401).json({ success: false, error: 'Organization context required' });
+  }
+  next();
 };

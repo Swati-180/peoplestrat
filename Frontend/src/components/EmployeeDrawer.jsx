@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { X, Brain, Wrench, AlertTriangle, ShieldCheck, Zap, Target, TrendingUp, Activity, User, BookOpen, ShieldAlert } from "lucide-react";
+import { X, Brain, Wrench, AlertTriangle, ShieldCheck, Zap, Target, TrendingUp, Activity, User, BookOpen, ShieldAlert, Edit3, Save, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts";
 import { StatusBadge } from "@/components/manager/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftStatus } from "@/components/DraftStatus";
+import { api } from "@/services/api";
 
 function getFitmentBand(score) {
   if (score >= 85) return "Overfit";
@@ -22,28 +27,87 @@ function getOverallRisk(employee) {
   return "Low";
 }
 
-export default function EmployeeDrawer({ employee, onClose, contextData = {}, defaultTab = "profile" }) {
+export default function EmployeeDrawer({ employee, onClose, contextData = {}, defaultTab = "profile", onUpdate }) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // If the drawer opens from a specific page, respect the defaultTab passed
   useEffect(() => {
     setActiveTab(defaultTab);
   }, [defaultTab]);
 
-  if (!employee) return null;
+  // Optional chaining used later to prevent crashes if employee is null
 
   // Shared Data
   const risk = getOverallRisk(employee);
-  const fitmentBand = getFitmentBand(employee.scores?.fitment || employee.fitmentScore || 0);
-  const initials = (employee.name || "").split(' ').map(n => n[0]).join('').toUpperCase();
+  const fitmentBand = getFitmentBand(employee?.scores?.fitment || employee?.fitmentScore || 0);
+  const initials = (employee?.name || "").split(' ').map(n => n[0]).join('').toUpperCase();
+
+  console.log('EMPLOYEE IN DRAWER:', employee);
+  console.log('ENABLED IS:', !!employee?._id, !!employee?.id, !!employee?.employeeId);
+
+  const empId = employee?._id || employee?.id;
+
+  // Draft hook for Edit Profile
+  const { 
+    data: formData, 
+    setData: setFormData, 
+    draftStatus, 
+    lastSaved, 
+    discardDraft, 
+    clearDraft, 
+    isSubmitting: isSubmittingDraft 
+  } = useFormDraft({
+    workflowType: 'edit_employee_profile',
+    referenceId: empId,
+    enabled: !!empId,
+    initialData: employee ? {
+      name: employee.name || '',
+      email: employee.email || '',
+      department: employee.department || '',
+      position: employee.position || employee.recommendedRole || '',
+      salary: employee.salary || '',
+      location: employee.location || '',
+      skills: employee.skills?.hard ? employee.skills.hard.join(', ') : (Array.isArray(employee.skills) ? employee.skills.join(', ') : '')
+    } : {},
+    debounceMs: 2000
+  });
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      // Convert skills string back to array if needed (though backend might handle it, let's pass it as is for simplicity, or format it)
+      const submitData = {
+        ...formData,
+        skills: formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(Boolean) : []
+      };
+      
+      const res = await api.put(`/employees/${empId}`, submitData);
+      if (res.data.success) {
+        toast({ title: "Profile Updated", description: "Employee details updated successfully." });
+        await clearDraft();
+        if (onUpdate) onUpdate(res.data.data);
+        else onClose(); // Close if no update callback
+      }
+    } catch (err) {
+      toast({ title: "Update Failed", description: err.response?.data?.message || "Failed to update profile", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Behavioral Data (Real Backend Data)
-  const communication = employee.communication || 0;
-  const teamwork = employee.teamwork || 0;
-  const adaptability = employee.adaptability || 0;
-  const problemSolving = employee.problemSolving || 0;
-  const creativity = employee.creativity || 0;
+  const communication = employee?.communication || 0;
+  const teamwork = employee?.teamwork || 0;
+  const adaptability = employee?.adaptability || 0;
+  const problemSolving = employee?.problemSolving || 0;
+  const creativity = employee?.creativity || 0;
 
   const behavioralData = [
     { skill: "Communication", value: communication },
@@ -55,18 +119,20 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
 
   // Missing Skills
   const allPossibleSkills = ["Cloud Architecture", "Leadership", "Advanced SQL", "Public Speaking", "Strategic Planning", "Machine Learning"];
-  const establishedHardSkills = Array.isArray(employee.skills) ? employee.skills : [];
+  const establishedHardSkills = Array.isArray(employee?.skills) ? employee.skills : [];
   const missingSkills = allPossibleSkills.filter(s => !establishedHardSkills.includes(s)).slice(0, 3);
 
   // Strategic Insight Logic
   let strategicInsight = "Maintaining stable performance metrics with consistent output.";
-  if (employee.scores?.utilization > 90 && employee.scores?.fatigue > 70) {
+  if (employee?.scores?.utilization > 90 && employee?.scores?.fatigue > 70) {
     strategicInsight = `Highly utilized but showing significant fatigue markers. Burnout risk is imminent without immediate workload optimization.`;
-  } else if ((employee.scores?.fitment || employee.fitmentScore) >= 85 && (employee.scores?.utilization || employee.utilization) < 70) {
+  } else if ((employee?.scores?.fitment || employee?.fitmentScore) >= 85 && (employee?.scores?.utilization || employee?.utilization) < 70) {
     strategicInsight = `High-potential talent with exceptional fitment scores currently being underutilized.`;
-  } else if ((employee.scores?.fitment || employee.fitmentScore) < 70) {
+  } else if ((employee?.scores?.fitment || employee?.fitmentScore) < 70) {
     strategicInsight = `Skill alignment gap detected for current role. Focused reskilling recommended.`;
   }
+
+  if (!employee) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
@@ -106,6 +172,7 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
         <div className="flex border-b overflow-x-auto shrink-0 bg-white px-2">
           {[
             { id: 'profile', icon: User, label: 'Profile' },
+            { id: 'edit', icon: Edit3, label: 'Edit Profile' },
             { id: 'flight_risk', icon: ShieldAlert, label: 'Flight Risk' },
             { id: 'fatigue', icon: Activity, label: 'Fatigue' },
             { id: 'skills', icon: Brain, label: 'Skills' },
@@ -145,6 +212,52 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
                 <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Strategic Insight</h4>
                 <p className="text-sm leading-relaxed">{strategicInsight}</p>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'edit' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <DraftStatus status={draftStatus} lastSaved={lastSaved} onDiscard={discardDraft} />
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input id="name" name="name" required value={formData.name} onChange={handleInputChange} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address *</Label>
+                    <Input id="email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input id="department" name="department" value={formData.department} onChange={handleInputChange} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="position">Position</Label>
+                      <Input id="position" name="position" value={formData.position} onChange={handleInputChange} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="salary">Salary ($)</Label>
+                      <Input id="salary" name="salary" type="number" value={formData.salary} onChange={handleInputChange} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Input id="location" name="location" value={formData.location} onChange={handleInputChange} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="skills">Skills (comma separated)</Label>
+                    <Input id="skills" name="skills" value={formData.skills} onChange={handleInputChange} placeholder="React, Node, SQL" />
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-blue-600 hover:bg-blue-700">
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+              </form>
             </div>
           )}
 

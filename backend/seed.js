@@ -16,9 +16,11 @@ import User from './models/User.js';
 import Employee from './models/Employee.js';
 import PerformanceRecord from './models/PerformanceRecord.js';
 import FTEWorkload from './models/FTEWorkload.js';
-import AnalysisResult from './models/AnalysisResult.js';
 import PeerFeedback from './models/PeerFeedback.js';
 import JobDescription from './models/jobDescriptions.js';
+import Organization from './models/Organization.js';
+import OrganizationMembership from './models/OrganizationMembership.js';
+import AnalysisResult from './models/AnalysisResult.js';
 import { ROLE_SKILL_MAP, BAND_EXPERIENCE } from './services/fitmentEngine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -91,7 +93,7 @@ function determineBand(roleName) {
   return 'OR';
 }
 
-function generatePerformanceRecord(employeeId, processName, aptitudeScores) {
+function generatePerformanceRecord(employeeId, orgId, processName, aptitudeScores) {
   // Use aptitude scores as weight for performance
   let performanceBias = 0.8; // default
   if (aptitudeScores) {
@@ -108,6 +110,7 @@ function generatePerformanceRecord(employeeId, processName, aptitudeScores) {
   const errorRate = faker.number.float({ min: 0.005, max: 0.1, fractionDigits: 3 });
 
   return {
+    organizationId: orgId,
     employee_id: employeeId,
     tasks_completed: tasksCompleted,
     expected_tasks: expectedTasks,
@@ -136,6 +139,7 @@ const seedDatabase = async () => {
       AnalysisResult.deleteMany({}),
       PeerFeedback.deleteMany({}),
       JobDescription.deleteMany({}),
+      Organization.deleteMany({}),
     ]);
     console.log('✓ Cleared existing data.');
 
@@ -143,8 +147,17 @@ const seedDatabase = async () => {
     const seedPassword = process.env.ADMIN_PASSWORD || 'pass1234';
     const hashedPassword = await bcrypt.hash(seedPassword, salt);
 
+    // 0. Create Demo Organization
+    const demoOrg = await Organization.create({
+      _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439000'),
+      name: 'Quintes Global Demo',
+      domain: 'quintesglobal.com',
+      status: 'active'
+    });
+    console.log(`✓ Demo organization created: Quintes Global Demo`);
+
     // 1. Create Manager Account
-    await User.create({
+    const managerUser = await User.create({
       _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'),
       name: 'Workforce Manager',
       username: 'manager_demo',
@@ -152,16 +165,30 @@ const seedDatabase = async () => {
       password: hashedPassword,
       role: 'manager',
     });
+    
+    await OrganizationMembership.create({
+      organizationId: demoOrg._id,
+      userId: managerUser._id,
+      role: 'manager',
+      status: 'active'
+    });
     console.log(`✓ Manager account created: manager@peoplestat.com / [seeded password]`);
 
     // 1.0.1 Create Admin User
-    await User.create({
+    const adminUser = await User.create({
       _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439012'),
       name: 'System Admin',
       username: 'admin',
       email: 'admin@peoplestat.com',
       password: hashedPassword,
       role: 'admin',
+    });
+    
+    await OrganizationMembership.create({
+      organizationId: demoOrg._id,
+      userId: adminUser._id,
+      role: 'admin',
+      status: 'active'
     });
     console.log(`✓ Admin account created: admin@peoplestat.com / [seeded password]`);
 
@@ -178,6 +205,7 @@ const seedDatabase = async () => {
 
     const demoEmployee = await Employee.create({
       userid: 'EMP-DEMO-001',
+      organizationId: demoOrg._id,
       name: 'Demo Employee',
       email: 'employee@peoplestat.com',
       department: 'Strategy & Operations',
@@ -199,6 +227,13 @@ const seedDatabase = async () => {
       skills: ['Excel', 'SAP', 'Financial Analysis', 'Process Optimization'],
       joiningDate: new Date(2021, 0, 15),
     });
+    
+    await OrganizationMembership.create({
+      organizationId: demoOrg._id,
+      userId: demoEmpUser._id,
+      role: 'employee',
+      status: 'active'
+    });
     console.log(`✓ Demo employee account created: employee@peoplestat.com / [seeded password]`);
 
     // 2. Load JSON Data
@@ -208,6 +243,7 @@ const seedDatabase = async () => {
     // 3. Seed FTE Workload Data (Static Domain Context)
     for (const fte of FTE_DATA) {
       await FTEWorkload.create({
+        organizationId: demoOrg._id,
         process_name: fte.process,
         sub_process: fte.sub,
         band: 'D2', // Default band for workload metric
@@ -264,6 +300,7 @@ const seedDatabase = async () => {
 
       const employee = await Employee.create({
         userid: record.userId,
+        organizationId: demoOrg._id,
         name: fullName,
         email: email,
         department: record.careerProfile?.industries?.[0] || processArea,
@@ -294,7 +331,7 @@ const seedDatabase = async () => {
       const recordsToGen = faker.number.int({ min: 15, max: 25 });
       const perfRecords = [];
       for (let i = 0; i < recordsToGen; i++) {
-        perfRecords.push(generatePerformanceRecord(employee._id, subProcess, record.aptitudeScores));
+        perfRecords.push(generatePerformanceRecord(employee._id, demoOrg._id, subProcess, record.aptitudeScores));
       }
       await PerformanceRecord.insertMany(perfRecords);
 
@@ -322,6 +359,7 @@ const seedDatabase = async () => {
     console.log('Seeding Job Descriptions for Succession Planning...');
     await JobDescription.create([
       {
+        organizationId: demoOrg._id,
         title: 'Senior Manager - FP&A',
         department: 'Finance',
         roleCriticality: 'High',
@@ -329,6 +367,7 @@ const seedDatabase = async () => {
         experienceRequired: 8
       },
       {
+        organizationId: demoOrg._id,
         title: 'VP of Technology',
         department: 'Technology',
         roleCriticality: 'High',
@@ -336,6 +375,7 @@ const seedDatabase = async () => {
         experienceRequired: 12
       },
       {
+        organizationId: demoOrg._id,
         title: 'Operations Director',
         department: 'Operations',
         roleCriticality: 'High',
@@ -356,6 +396,7 @@ const seedDatabase = async () => {
         }
         
         await PeerFeedback.create({
+          organizationId: demoOrg._id,
           sourceEmployeeId: source._id,
           targetEmployeeId: target._id,
           rating: faker.number.int({ min: 3, max: 5 }),
@@ -369,6 +410,12 @@ const seedDatabase = async () => {
     const employeesCount = await Employee.countDocuments();
     const recordsCount = await PerformanceRecord.countDocuments();
     const fteCount = await FTEWorkload.countDocuments();
+
+    const { up: fixAdminMembership } = await import('./migrations/phase4_fix_admin_membership.js');
+    await fixAdminMembership();
+
+    const { up: multiOrgTestData } = await import('./migrations/phase4_multi_org_test_data.js');
+    await multiOrgTestData();
 
     console.log('\n=========================================');
     console.log('SEEDING COMPLETE');

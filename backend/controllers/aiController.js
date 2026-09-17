@@ -4,11 +4,11 @@ import Groq from 'groq-sdk';
 
 export const runFitment = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.employeeId);
+    const employee = await Employee.findOne({ _id: req.params.employeeId, organizationId: req.organizationId });
     if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' });
 
     // Get the latest analysis result for this employee
-    const analysis = await AnalysisResult.findOne({ employee_id: employee._id }).sort({ analysis_date: -1 });
+    const analysis = await AnalysisResult.findOne({ employee_id: employee._id, organizationId: req.organizationId }).sort({ analysis_date: -1 });
 
     if (!analysis) {
       return res.status(404).json({ success: false, error: 'No analysis found. Run workforce analysis first.' });
@@ -53,13 +53,13 @@ export const chatAssistant = async (req, res) => {
     const nameRegex = words.length > 0 ? new RegExp(words.join('|'), 'i') : null;
 
     const [mentionedEmployee, generalAnalyses] = await Promise.all([
-      nameRegex ? Employee.findOne({ name: { $regex: nameRegex } }) : null,
-      AnalysisResult.find().sort({ analysis_date: -1 }).limit(100).populate('employee_id', 'name band process_area position skills')
+      nameRegex ? Employee.findOne({ name: { $regex: nameRegex }, organizationId: req.organizationId }) : null,
+      AnalysisResult.find({ organizationId: req.organizationId }).sort({ analysis_date: -1 }).limit(100).populate('employee_id', 'name band process_area position skills')
     ]);
 
     let mentionedAnalysis = null;
     if (mentionedEmployee) {
-      mentionedAnalysis = await AnalysisResult.findOne({ employee_id: mentionedEmployee._id }).sort({ analysis_date: -1 });
+      mentionedAnalysis = await AnalysisResult.findOne({ employee_id: mentionedEmployee._id, organizationId: req.organizationId }).sort({ analysis_date: -1 });
     }
 
     if (isApiKeyValid) {

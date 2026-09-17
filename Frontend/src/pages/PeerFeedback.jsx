@@ -12,6 +12,8 @@ import { KpiStrip } from "@/components/manager/KpiStrip";
 import { CompactTable } from "@/components/manager/CompactTable";
 import { Pagination } from "@/components/manager/Pagination";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftStatus } from "@/components/DraftStatus";
 
 const COLLABORATION_TAGS = [
   "Team Player", "Innovative", "Helpful", "Problem Solver",
@@ -200,9 +202,17 @@ function EmployeeView() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [targetEmployeeId, setTargetEmployeeId] = useState("");
-  const [rating, setRating] = useState(0);
-  const [selectedTags, setSelectedTags] = useState([]);
+  const { data, setData, draftStatus, lastSaved, clearDraft, discardDraft } = useFormDraft({
+    workflowType: 'peer_feedback',
+    initialData: { targetEmployeeId: "", rating: 0, selectedTags: [] },
+    debounceMs: 3000
+  });
+
+  const { targetEmployeeId, rating, selectedTags } = data;
+
+  const setTargetEmployeeId = (val) => setData(p => ({ ...p, targetEmployeeId: val }));
+  const setRating = (val) => setData(p => ({ ...p, rating: val }));
+  const setSelectedTags = (tags) => setData(p => ({ ...p, selectedTags: tags }));
 
   useEffect(() => {
     loadData();
@@ -229,8 +239,8 @@ function EmployeeView() {
   };
 
   const toggleTag = (tag) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    setSelectedTags(
+      selectedTags.includes(tag) ? selectedTags.filter(t => t !== tag) : [...selectedTags, tag]
     );
   };
 
@@ -244,9 +254,7 @@ function EmployeeView() {
       const res = await submitPeerFeedback({ targetEmployeeId, rating, collaborationTags: selectedTags });
       if (res.data.success) {
         toast({ title: "Success", description: "Feedback submitted successfully." });
-        setTargetEmployeeId("");
-        setRating(0);
-        setSelectedTags([]);
+        await clearDraft();
       }
     } catch (error) {
       const msg = error.response?.data?.error || "Failed to submit feedback.";
@@ -270,6 +278,8 @@ function EmployeeView() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <DraftStatus status={draftStatus} lastSaved={lastSaved} onDiscard={discardDraft} />
+          
           <div className="space-y-2">
             <label className="text-sm font-medium">Select Colleague</label>
             <select 
@@ -303,21 +313,32 @@ function EmployeeView() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Collaboration Tags</label>
             <div className="flex flex-wrap gap-2">
-              {COLLABORATION_TAGS.map(tag => (
-                <Badge 
-                  key={tag}
-                  variant="outline"
-                  className={`cursor-pointer px-3 py-1 text-sm ${selectedTags.includes(tag) ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tag}
-                </Badge>
-              ))}
+              {COLLABORATION_TAGS.map(tag => {
+                const isSelected = selectedTags.includes(tag);
+                return (
+                  <Badge 
+                    key={tag}
+                    variant={isSelected ? "default" : "outline"}
+                    className={`cursor-pointer px-3 py-1 text-sm font-medium transition-colors ${
+                      isSelected 
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent' 
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                    }`}
+                    onClick={() => toggleTag(tag)}
+                  >
+                    {tag}
+                  </Badge>
+                );
+              })}
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={submitting}>
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          <Button 
+            type="submit" 
+            disabled={submitting} 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
+          >
+            {submitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Target className="w-5 h-5 mr-2" />}
             Submit Feedback
           </Button>
         </form>

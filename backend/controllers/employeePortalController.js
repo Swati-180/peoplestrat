@@ -8,7 +8,7 @@ import PulseCheck from '../models/PulseCheck.js';
 const findMyEmployee = async (req) => {
   const email = req.user?.email;
   if (!email) return null;
-  return Employee.findOne({ email });
+  return Employee.findOne({ email, organizationId: req.organizationId });
 };
 
 // Helper: add scores object for frontend compatibility
@@ -60,12 +60,12 @@ export const getMyWorkMetrics = async (req, res) => {
     if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
 
     // Get performance records
-    const records = await PerformanceRecord.find({ employee_id: emp._id })
+    const records = await PerformanceRecord.find({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ record_date: -1 })
       .limit(30);
 
     // Get analysis result
-    const analysis = await AnalysisResult.findOne({ employee_id: emp._id })
+    const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
 
     const totalTasks = records.reduce((s, r) => s + (r.tasks_completed || 0), 0);
@@ -136,7 +136,7 @@ export const getMySkills = async (req, res) => {
     const emp = await findMyEmployee(req);
     if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
 
-    const analysis = await AnalysisResult.findOne({ employee_id: emp._id })
+    const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
 
     // Build skill matrix from employee's skills array
@@ -191,10 +191,10 @@ export const getMyFatigue = async (req, res) => {
     const emp = await findMyEmployee(req);
     if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
 
-    const analysis = await AnalysisResult.findOne({ employee_id: emp._id })
+    const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
 
-    const records = await PerformanceRecord.find({ employee_id: emp._id })
+    const records = await PerformanceRecord.find({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ record_date: -1 })
       .limit(30);
 
@@ -237,7 +237,7 @@ export const getMyCareer = async (req, res) => {
     const emp = await findMyEmployee(req);
     if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
 
-    const analysis = await AnalysisResult.findOne({ employee_id: emp._id })
+    const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
 
     const fitment = emp.fitmentScore || analysis?.fitment_score || 0;
@@ -303,7 +303,7 @@ export const getMyNotifications = async (req, res) => {
     const emp = await findMyEmployee(req);
     if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
 
-    const analysis = await AnalysisResult.findOne({ employee_id: emp._id })
+    const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
 
     const notifications = [];
@@ -353,7 +353,7 @@ export const submitPulseCheck = async (req, res) => {
     const subjectiveScore = ((stressLevel * 20) + ((6 - workloadManageability) * 20) + ((6 - sleepQuality) * 20)) / 3;
 
     // 2. Fetch objective data
-    const records = await PerformanceRecord.find({ employee_id: emp._id }).sort({ record_date: -1 }).limit(30);
+    const records = await PerformanceRecord.find({ employee_id: emp._id, organizationId: req.organizationId }).sort({ record_date: -1 }).limit(30);
     const totalOvertime = records.reduce((s, r) => s + (r.overtime_hours || 0), 0);
     
     // Calculate objective penalty (0-100, capped)
@@ -364,6 +364,7 @@ export const submitPulseCheck = async (req, res) => {
 
     // 4. Save PulseCheck
     const pulseCheck = new PulseCheck({
+      organizationId: req.organizationId,
       employeeId: emp._id,
       stressLevel,
       workloadManageability,
@@ -468,6 +469,7 @@ export const submitBehaviorAssessment = async (req, res) => {
 
     // Save result
     const result = new BehavioralResult({
+      organizationId: req.organizationId,
       employeeId: emp._id,
       scores: finalScores,
       rawResponses: responses

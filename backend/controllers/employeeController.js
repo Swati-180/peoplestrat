@@ -3,6 +3,7 @@ import xlsx from "xlsx";
 
 export const addEmployee = async (req, res) => {
   try {
+    req.body.organizationId = req.organizationId;
     const emp = await Employee.create(req.body);
     res.json({ success: true, data: emp });
   } catch (error) {
@@ -23,7 +24,11 @@ export const getEmployees = async (req, res) => {
       sortDir = 'asc'
     } = req.query;
 
-    const query = {};
+    if (!req.organizationId) {
+      return res.status(401).json({ success: false, error: 'Organization context required' });
+    }
+
+    const query = { organizationId: req.organizationId };
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -116,8 +121,9 @@ export const uploadBulkEmployees = async (req, res) => {
         if (!emailToFind) continue;
 
         const employeeDoc = await Employee.findOneAndUpdate(
-          { email: emailToFind },
+          { email: emailToFind, organizationId: req.organizationId },
           {
+            organizationId: req.organizationId,
             userid,
             name: emp.name || emp.Name || emp.NAME,
             email: emailToFind,
@@ -156,7 +162,7 @@ export const uploadBulkEmployees = async (req, res) => {
 export const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findOne({ _id: id, organizationId: req.organizationId });
     
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
@@ -180,7 +186,10 @@ export const getEmployeeById = async (req, res) => {
 export const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Employee.findByIdAndUpdate(id, req.body, { new: true });
+    const updated = await Employee.findOneAndUpdate({ _id: id, organizationId: req.organizationId }, req.body, { new: true });
+    if (!updated) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -190,7 +199,10 @@ export const updateEmployee = async (req, res) => {
 export const deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    await Employee.findByIdAndDelete(id);
+    const deleted = await Employee.findOneAndDelete({ _id: id, organizationId: req.organizationId });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
     res.json({ success: true, message: 'Employee deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -199,7 +211,7 @@ export const deleteEmployee = async (req, res) => {
 
 export const getEmployeeStats = async (req, res) => {
   try {
-    const employees = await Employee.find();
+    const employees = await Employee.find({ organizationId: req.organizationId });
     
     if (employees.length === 0) {
       return res.json({

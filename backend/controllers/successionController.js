@@ -10,7 +10,7 @@ import { calculateReadinessScore, generateSuccessionLLMInsights } from '../servi
  */
 export const getCriticalRoles = async (req, res) => {
   try {
-    const roles = await JobDescription.find({ roleCriticality: 'High' });
+    const roles = await JobDescription.find({ roleCriticality: 'High', organizationId: req.organizationId });
     res.json({ success: true, roles });
   } catch (error) {
     console.error('getCriticalRoles error:', error);
@@ -25,7 +25,7 @@ export const getCriticalRoles = async (req, res) => {
 export const getSuccessionPlan = async (req, res) => {
   try {
     const { targetRoleId } = req.params;
-    const plan = await SuccessionPlan.findOne({ targetRoleId }).populate('candidates.employeeId', 'name position band department');
+    const plan = await SuccessionPlan.findOne({ targetRoleId, organizationId: req.organizationId }).populate('candidates.employeeId', 'name position band department');
     
     if (!plan) {
       return res.status(404).json({ success: false, error: 'Succession plan not found for this role.' });
@@ -45,14 +45,14 @@ export const getSuccessionPlan = async (req, res) => {
 export const predictSuccessors = async (req, res) => {
   try {
     const { targetRoleId } = req.params;
-    const jobDescription = await JobDescription.findById(targetRoleId);
+    const jobDescription = await JobDescription.findOne({ _id: targetRoleId, organizationId: req.organizationId });
     if (!jobDescription) {
       return res.status(404).json({ success: false, error: 'Job description not found.' });
     }
 
-    // Get all active employees
-    const employees = await Employee.find({});
-    const analysisResults = await AnalysisResult.find({});
+    // Get all active employees for this organization
+    const employees = await Employee.find({ organizationId: req.organizationId });
+    const analysisResults = await AnalysisResult.find({ organizationId: req.organizationId });
     
     // Create a map of employeeId -> analysisResult
     const analysisMap = {};
@@ -113,15 +113,21 @@ export const updateCandidate = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields.' });
     }
 
-    const jobDescription = await JobDescription.findById(targetRoleId);
+    const jobDescription = await JobDescription.findOne({ _id: targetRoleId, organizationId: req.organizationId });
     if (!jobDescription) {
       return res.status(404).json({ success: false, error: 'Job description not found.' });
     }
 
-    let plan = await SuccessionPlan.findOne({ targetRoleId });
+    const candidateEmp = await Employee.findOne({ _id: employeeId, organizationId: req.organizationId });
+    if (!candidateEmp) {
+      return res.status(404).json({ success: false, error: 'Candidate employee not found in this organization.' });
+    }
+
+    let plan = await SuccessionPlan.findOne({ targetRoleId, organizationId: req.organizationId });
     if (!plan) {
       plan = new SuccessionPlan({
         targetRoleId,
+        organizationId: req.organizationId,
         department: jobDescription.department || 'General',
         status: 'Active',
         candidates: []

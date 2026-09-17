@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const peerFeedbackSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   sourceEmployeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
   targetEmployeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
   date: { type: Date, required: true },
@@ -9,5 +10,6 @@ const peerFeedbackSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 peerFeedbackSchema.index({ targetEmployeeId: 1, date: -1 });
+peerFeedbackSchema.index({ organizationId: 1, targetEmployeeId: 1, date: -1 });
 
 export default mongoose.model('PeerFeedback', peerFeedbackSchema);

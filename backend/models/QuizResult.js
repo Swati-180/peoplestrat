@@ -25,5 +25,6 @@ const quizResultSchema = new mongoose.Schema(
 
 quizResultSchema.index({ userId: 1 });
 quizResultSchema.index({ webhookEventId: 1 }, { unique: true, sparse: true });
+quizResultSchema.index({ organizationId: 1, userId: 1 });
 
 export default mongoose.model('QuizResult', quizResultSchema);

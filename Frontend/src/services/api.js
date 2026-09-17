@@ -7,11 +7,20 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+let activeOrganizationId = null;
+
+export const setApiOrganizationId = (id) => {
+  activeOrganizationId = id;
+};
+
 // Add auth token interceptor
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (activeOrganizationId) {
+    config.headers['x-organization-id'] = activeOrganizationId;
   }
   return config;
 });
@@ -52,6 +61,7 @@ export const fetchOptimizationRecommendations = () => api.get("/optimization/rec
 export const loginUser = (credentials) => api.post("/auth/login", credentials);
 export const registerUser = (data) => api.post("/auth/register", data);
 export const fetchCurrentUser = () => api.get("/auth/me");
+export const fetchMyOrganizations = () => api.get("/auth/me/organizations");
 
 // ─── Analytics APIs ────────────────────────────
 export const fetchWorkforceSummary = () => api.get("/analytics/workforce-summary");

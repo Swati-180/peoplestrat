@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { API_BASE_URL } from "../services/api";
+import { API_BASE_URL, setApiOrganizationId } from "../services/api";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -48,33 +48,6 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("Login error:", error);
 
-      // ── Demo / offline fallback ──
-      // Covers all known demo credentials so the app works even if backend is unreachable
-      const email = usernameOrEmail.toLowerCase().trim();
-      const DEMO_ACCOUNTS = [
-        {
-          match: ["manager@peoplestat.com", "manager@example.com", "manager"],
-          user: { id: "demo-mgr-1", username: "manager", email: "manager@peoplestat.com", role: "manager" },
-        },
-        {
-          match: ["employee@peoplestat.com", "employee@example.com", "employee"],
-          user: { id: "demo-emp-1", username: "employee", email: "employee@peoplestat.com", role: "employee" },
-        },
-      ];
-
-      const DEMO_PASSWORDS = ["pass1234", "password123", "pass123"];
-
-      if (DEMO_PASSWORDS.includes(password)) {
-        const account = DEMO_ACCOUNTS.find((a) => a.match.includes(email));
-        if (account) {
-          const fallbackUser = account.user;
-          localStorage.setItem("mock_user", JSON.stringify(fallbackUser));
-          localStorage.setItem("token", "demo-token-" + fallbackUser.role);
-          setUser(fallbackUser);
-          return fallbackUser;
-        }
-      }
-
       throw error;
     }
   };
@@ -107,6 +80,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem("mock_user");
     localStorage.removeItem("token");
+    localStorage.removeItem("activeOrganization");
+    setApiOrganizationId(null);
     setUser(null);
   };
 
