@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const LeadershipPipelineSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   employeeId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Employee', 
@@ -22,6 +23,8 @@ const LeadershipPipelineSchema = new mongoose.Schema({
     default: Date.now 
   }
 });
+
+LeadershipPipelineSchema.index({ organizationId: 1, stage: 1 });
 
 const LeadershipPipeline = mongoose.model('LeadershipPipeline', LeadershipPipelineSchema);
 export default LeadershipPipeline;

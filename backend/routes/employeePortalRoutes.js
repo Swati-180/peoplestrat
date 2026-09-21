@@ -8,7 +8,6 @@ import {
   getMyFatigue,
   getMyCareer,
   getMyNotifications,
-  submitBehaviorAssessment,
   submitPulseCheck,
 } from '../controllers/employeePortalController.js';
 
@@ -27,6 +26,5 @@ router.get('/me/notifications', getMyNotifications);
 
 // Phase 2 endpoints
 router.post('/pulse-check', submitPulseCheck);
-router.post('/assessments/behavior', submitBehaviorAssessment);
 
 export default router;

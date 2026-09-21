@@ -6,6 +6,7 @@ const OptionSchema = new mongoose.Schema({
 });
 
 const QuestionSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
   assessmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assessment', required: true },
   text: { type: String, required: true },
   category: { 
@@ -16,5 +17,7 @@ const QuestionSchema = new mongoose.Schema({
   options: [OptionSchema],
   weight: { type: Number, default: 1 }
 });
+
+QuestionSchema.index({ organizationId: 1, assessmentId: 1 });
 
 export default mongoose.model('Question', QuestionSchema);

@@ -6,12 +6,15 @@ import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import Assessment from '../models/Assessment.js';
 import Invitation from '../models/Invitation.js';
+import Organization from '../models/Organization.js';
+import OrganizationMembership from '../models/OrganizationMembership.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 let token;
 let employeeId;
 let assessmentId;
+let orgId;
 let mongoServer;
 
 beforeAll(async () => {
@@ -24,6 +27,8 @@ beforeAll(async () => {
   await User.deleteMany({});
   await Employee.deleteMany({});
   await Assessment.deleteMany({});
+  await Organization.deleteMany({});
+  await OrganizationMembership.deleteMany({});
 }, 10000); // 10s timeout for downloading binary if needed
 
 afterAll(async () => {
@@ -39,6 +44,9 @@ describe('AI Workforce API Endpoints', () => {
     // Generate valid invite token
     const passwordHash = await bcrypt.hash('password123', 10);
     const admin = await User.create({ name: 'Admin', username: 'admin', email: 'admin@test.com', password: passwordHash, role: 'admin' });
+    const org = await Organization.create({ name: 'Test API Org', domain: 'testapi.com' });
+    orgId = org._id.toString();
+    await OrganizationMembership.create({ userId: admin._id, organizationId: org._id, role: 'admin', status: 'active' });
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = await bcrypt.hash(rawToken, 10);
     const invite = await Invitation.create({
@@ -83,7 +91,8 @@ describe('AI Workforce API Endpoints', () => {
   it('3. GET /api/employees - Should fetch all employees', async () => {
     const res = await request(app)
       .get('/api/employees')
-      .set('Authorization', `Bearer ${token}`);
+      .set('Authorization', `Bearer ${token}`)
+      .set('x-organization-id', orgId);
     
     expect(res.statusCode).toEqual(200);
     expect(res.body.success).toBe(true);
@@ -142,7 +151,8 @@ describe('AI Workforce API Endpoints', () => {
   it('9a. POST /api/analysis/predict-flight-risk/:id - Should reject malformed ID with 400', async () => {
     const res = await request(app)
       .post(`/api/analysis/predict-flight-risk/undefined`)
-      .set('Authorization', `Bearer ${token}`);
+      .set('Authorization', `Bearer ${token}`)
+      .set('x-organization-id', orgId);
     
     expect(res.statusCode).toBe(400);
     expect(res.body.success).toBe(false);
@@ -158,12 +168,14 @@ describe('AI Workforce API Endpoints', () => {
       process_area: 'PSS',
       fitmentScore: 60,
       fatigueScore: 80,
-      productivity: 50
+      productivity: 50,
+      organizationId: orgId
     });
 
     const res = await request(app)
       .post(`/api/analysis/predict-flight-risk/${employee._id}`)
-      .set('Authorization', `Bearer ${token}`);
+      .set('Authorization', `Bearer ${token}`)
+      .set('x-organization-id', orgId);
     
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);

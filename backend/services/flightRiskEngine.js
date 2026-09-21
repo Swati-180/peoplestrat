@@ -2,7 +2,7 @@ import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const calculateDeterministicFlightRisk = (employee, perfRecords, wellbeingCheckins) => {
+export const calculateDeterministicFlightRisk = (employee, perfRecords, pulseChecks) => {
   let totalWeight = 0;
   let weightedScoreSum = 0;
   const missingInputs = [];
@@ -59,8 +59,8 @@ export const calculateDeterministicFlightRisk = (employee, perfRecords, wellbein
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   
-  const recentCheckins = wellbeingCheckins.filter(c => new Date(c.date) >= ninetyDaysAgo)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  const recentCheckins = pulseChecks.filter(c => new Date(c.checkDate) >= ninetyDaysAgo)
+    .sort((a, b) => new Date(b.checkDate) - new Date(a.checkDate));
   
   const latestCheckin = recentCheckins.length > 0 ? recentCheckins[0] : null;
 
@@ -69,25 +69,25 @@ export const calculateDeterministicFlightRisk = (employee, perfRecords, wellbein
     let wbComponents = 0;
     let wbScoreSum = 0;
 
-    if (typeof latestCheckin.engagementScore === 'number') {
+    if (typeof latestCheckin.workloadManageability === 'number') {
       wbComponents++;
-      wbScoreSum += (100 - latestCheckin.engagementScore);
+      wbScoreSum += ((5 - latestCheckin.workloadManageability) / 4) * 100;
     } else {
-      partialMissing.push('WellbeingCheckin.engagementScore');
+      partialMissing.push('PulseCheck.workloadManageability');
     }
 
-    if (typeof latestCheckin.moodScore === 'number') {
+    if (typeof latestCheckin.sleepQuality === 'number') {
       wbComponents++;
-      wbScoreSum += ((5 - latestCheckin.moodScore) / 4) * 100;
+      wbScoreSum += ((5 - latestCheckin.sleepQuality) / 4) * 100;
     } else {
-      partialMissing.push('WellbeingCheckin.moodScore');
+      partialMissing.push('PulseCheck.sleepQuality');
     }
 
     if (typeof latestCheckin.stressLevel === 'number') {
       wbComponents++;
       wbScoreSum += ((latestCheckin.stressLevel - 1) / 4) * 100;
     } else {
-      partialMissing.push('WellbeingCheckin.stressLevel');
+      partialMissing.push('PulseCheck.stressLevel');
     }
 
     if (wbComponents > 0) {
@@ -96,10 +96,10 @@ export const calculateDeterministicFlightRisk = (employee, perfRecords, wellbein
     } else {
       // If we have a checkin object but none of the fields exist, we drop this component
       totalWeight -= 0.20;
-      missingInputs.push('WellbeingCheckin (all fields)');
+      missingInputs.push('PulseCheck (all fields)');
     }
   } else {
-    missingInputs.push('WellbeingCheckin');
+    missingInputs.push('PulseCheck');
   }
 
   // 5. Performance Mobility (15%)

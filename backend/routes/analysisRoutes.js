@@ -1,12 +1,13 @@
 import express from 'express';
 import { runAnalysis, getAnalysisResults, getEmployeeAnalysis, getAnalysisSummary, predictFlightRisk, predictFlightRiskBatch, getFlightRisk, getGapAnalysis, getGapInterventions } from '../controllers/analysisController.js';
 import { chatAssistant } from '../controllers/aiController.js';
-import { protect, managerOnly, adminOnly } from '../middleware/auth.js';
+import { protect, managerOnly, adminOnly, requireOrganization } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // All analysis routes require authentication
 router.use(protect);
+router.use(requireOrganization);
 
 // POST /api/analysis/run — Trigger analysis (manager only)
 router.post('/run', managerOnly, runAnalysis);

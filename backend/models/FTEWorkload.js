@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const fteWorkloadSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   process_name: { type: String, required: true, index: true }, // F&A, PSS, SAP
   sub_process: { type: String, required: true }, // Invoice Posting, SAP Support, etc.
   band: { 
@@ -21,5 +22,6 @@ const fteWorkloadSchema = new mongoose.Schema({
 
 // Compound index for process + band queries
 fteWorkloadSchema.index({ process_name: 1, band: 1 });
+fteWorkloadSchema.index({ organizationId: 1, process_name: 1, band: 1 });
 
 export default mongoose.model('FTEWorkload', fteWorkloadSchema);

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const pulseCheckSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
   checkDate: { type: Date, default: Date.now },
   stressLevel: { type: Number, required: true }, // 1-5
@@ -11,5 +12,6 @@ const pulseCheckSchema = new mongoose.Schema({
 
 // Do not index sensitive fields, but index employeeId
 pulseCheckSchema.index({ employeeId: 1, checkDate: -1 });
+pulseCheckSchema.index({ organizationId: 1, employeeId: 1 });
 
 export default mongoose.model('PulseCheck', pulseCheckSchema);

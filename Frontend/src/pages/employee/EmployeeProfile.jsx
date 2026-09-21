@@ -56,15 +56,24 @@ export default function EmployeeProfile() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [rawEmp, setRawEmp] = useState(null);
+  const [careerData, setCareerData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.email) { setIsLoading(false); return; }
       try {
-        const res = await api.get(`/employees?email=${user.email}`);
-        const d = res.data;
-        if (d.success && d.data && d.data.length > 0) setRawEmp(d.data[0]);
+        const [empRes, careerRes] = await Promise.all([
+          api.get(`/employees?email=${user.email}`),
+          api.get('/employee/me/career').catch(() => null)
+        ]);
+        
+        if (empRes.data.success && empRes.data.data && empRes.data.data.length > 0) {
+           setRawEmp(empRes.data.data[0]);
+        }
+        if (careerRes?.data?.success) {
+           setCareerData(careerRes.data.data);
+        }
       } catch (e) {
         console.error("Profile fetch error:", e);
       } finally {
@@ -77,25 +86,25 @@ export default function EmployeeProfile() {
   const profile = useMemo(() => {
     if (!rawEmp) return null;
 
-    const fr = rawEmp.fitmentResponses || {};
     const wh = rawEmp.workingHours || {};
     const pc = rawEmp.processCharacteristics || {};
     const em = rawEmp.employeeMaster || {};
 
-    const score = (v) => {
-      if (!v) return 60;
-      const s = String(v).toLowerCase();
-      if (s.includes("volunteers") || s.includes("consensus") || s.includes("alignment") || s.includes("high") || s.includes("minimal")) return 90;
-      if (s.includes("similar") || s.includes("listening") || s.includes("medium")) return 60;
-      return 30;
+    const hasAssessment = careerData?.assessmentCompleted;
+    const fitment = hasAssessment ? careerData.fitmentScore : undefined;
+    
+    // We get radar components from careerData.radarData instead of manual calculation if available
+    const getRadarVal = (subject) => {
+        if (!hasAssessment || !careerData?.radarData) return undefined;
+        const item = careerData.radarData.find(r => r.subject === subject);
+        return item ? item.A : 0;
     };
 
-    const comm  = score(fr.communicativeness);
-    const adapt = score(fr.changeReadyTechSavviness);
-    const lead  = score(fr.multiplexer);
-    const collab = score(fr.teamPlayerCollaboration);
-    const inno  = score(fr.selfMotivated);
-    const fitment = Math.round((comm + adapt + lead + collab + inno) / 5);
+    const comm  = getRadarVal('Communication');
+    const adapt = getRadarVal('Adaptability');
+    const lead  = getRadarVal('Leadership');
+    const collab = getRadarVal('Teamwork');
+    const inno  = getRadarVal('Resilience');
 
     const numericHours = Object.values(wh).filter(v => !isNaN(Number(v)) && v !== "").map(Number);
     const totalHours = numericHours.reduce((s, v) => s + v, 0);
@@ -121,6 +130,7 @@ export default function EmployeeProfile() {
       location: em.location || "—",
       experience: pc.experience || "—",
       employeeId: em.employeeId || rawEmp._id?.toString().slice(-6).toUpperCase() || "—",
+      hasAssessment,
       fitment, utilization, fatigueScore,
       comm, adapt, lead, collab, inno,
       hardSkills, softSkills,
@@ -128,7 +138,7 @@ export default function EmployeeProfile() {
       joinDate: em.joiningDate || "—",
       employmentType: em.employmentType || "Full-Time",
     };
-  }, [rawEmp, user]);
+  }, [rawEmp, user, careerData]);
 
   if (isLoading) {
     return (
@@ -156,13 +166,13 @@ export default function EmployeeProfile() {
     );
   }
 
-  const radarData = [
+  const radarData = profile.hasAssessment ? [
     { label: "Comm.", value: profile.comm },
     { label: "Lead.", value: profile.lead },
     { label: "Adapt.", value: profile.adapt },
-    { label: "Collab.", value: profile.collab },
-    { label: "Innov.", value: profile.inno },
-  ];
+    { label: "Team.", value: profile.collab },
+    { label: "Resil.", value: profile.inno },
+  ] : [];
 
   return (
     <div className="space-y-6 pb-10">
@@ -190,7 +200,7 @@ export default function EmployeeProfile() {
         {/* Mini KPIs in hero */}
         <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/20">
           {[
-            { label: "Fitment Score", value: formatPercentage(profile.fitment) },
+            { label: "Fitment Score", value: profile.hasAssessment ? formatPercentage(profile.fitment) : 'Pending' },
             { label: "Utilization", value: formatPercentage(profile.utilization) },
             { label: "Fatigue Score", value: formatPercentage(profile.fatigueScore) },
           ].map((item, i) => (
@@ -242,24 +252,30 @@ export default function EmployeeProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { label: "Role Fitment", value: profile.fitment, color: "bg-blue-500" },
-              { label: "Communication", value: profile.comm, color: "bg-indigo-500" },
-              { label: "Leadership", value: profile.lead, color: "bg-purple-500" },
-              { label: "Adaptability", value: profile.adapt, color: "bg-green-500" },
-              { label: "Collaboration", value: profile.collab, color: "bg-amber-500" },
-              { label: "Innovation", value: profile.inno, color: "bg-pink-500" },
-            ].map(({ label, value, color }, i) => (
-              <div key={i} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-slate-600">{label}</span>
-                  <span className="font-black text-slate-800">{formatPercentage(value)}</span>
+            {profile.hasAssessment ? (
+              [
+                { label: "Role Fitment", value: profile.fitment, color: "bg-blue-500" },
+                { label: "Communication", value: profile.comm, color: "bg-indigo-500" },
+                { label: "Leadership", value: profile.lead, color: "bg-purple-500" },
+                { label: "Adaptability", value: profile.adapt, color: "bg-green-500" },
+                { label: "Teamwork", value: profile.collab, color: "bg-amber-500" },
+                { label: "Resilience", value: profile.inno, color: "bg-pink-500" },
+              ].map(({ label, value, color }, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-semibold text-slate-600">{label}</span>
+                    <span className="font-black text-slate-800">{formatPercentage(value)}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%`, transition: "width 0.5s ease" }} />
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%`, transition: "width 0.5s ease" }} />
-                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6">
+                 <span className="text-sm font-semibold text-slate-400">Assessment Pending</span>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
@@ -271,7 +287,17 @@ export default function EmployeeProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-2">
-            <RadarChart data={radarData} size={180} />
+            {profile.hasAssessment ? (
+              <RadarChart data={radarData} size={180} />
+            ) : (
+               <div className="flex flex-col items-center justify-center h-[180px] text-center px-4">
+                 <Brain className="h-8 w-8 text-slate-300 mb-2" />
+                 <p className="text-xs text-slate-500">Complete your behavioral assessment to see your radar.</p>
+                 <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.href='/employee/assessments'}>
+                   Start Assessment
+                 </Button>
+               </div>
+            )}
           </CardContent>
         </Card>
       </div>

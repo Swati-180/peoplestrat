@@ -130,7 +130,7 @@ export const startQuiz = async (req, res) => {
 
     console.log(`[QUIZ] initiate user=${userId} embedOrigin=${embedOrigin}`);
     const result = await quizService.initiate(String(userId), { embedOrigin });
-    await quizService.saveInitiated(String(userId), result.quizLink, result.expiresInSeconds);
+    await quizService.saveInitiated(String(userId), result.quizLink, result.expiresInSeconds, req.organizationId);
     return res.json({ success: true, data: { ...result, embedOrigin }, ...result, embedOrigin });
   } catch (err) {
     const status = err?.status || (err?.message || '').includes('not configured') ? 500 : 500;
@@ -189,9 +189,14 @@ async function runPostQuizPipeline(quizResult, results, skills) {
       console.error('[QUIZ] pipeline: no user email for quiz owner, skipping Employee update');
       return;
     }
-    const emp = await Employee.findOne({ email: owner.email });
+    const emp = await Employee.findOne({ email: owner.email, organizationId: quizResult.organizationId });
     if (!emp) {
-      console.error(`[QUIZ] pipeline: no Employee record for ${owner.email}, skipping Employee update`);
+      console.error(`[QUIZ] pipeline: no Employee record for ${owner.email} in org ${quizResult.organizationId}, skipping Employee update`);
+      return;
+    }
+
+    if (String(emp.organizationId) !== String(quizResult.organizationId)) {
+      console.error(`[QUIZ] pipeline: Org mismatch between employee ${emp.organizationId} and quiz ${quizResult.organizationId}, skipping Employee update`);
       return;
     }
 
@@ -201,6 +206,7 @@ async function runPostQuizPipeline(quizResult, results, skills) {
         responseValue: clampScore(s?.score, 3),
       }));
       await BehavioralResult.create({
+        organizationId: quizResult.organizationId,
         employeeId: emp._id,
         scores: finalScores,
         rawResponses,

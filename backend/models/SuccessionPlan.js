@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const successionPlanSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   targetRoleId: { type: mongoose.Schema.Types.ObjectId, ref: 'JobDescription', required: true },
   department: { type: String, required: true },
   candidates: [{
@@ -10,5 +11,7 @@ const successionPlanSchema = new mongoose.Schema({
   }],
   status: { type: String, enum: ['Active', 'Draft', 'Closed'], required: true }
 }, { timestamps: true });
+
+successionPlanSchema.index({ organizationId: 1, status: 1 });
 
 export default mongoose.model('SuccessionPlan', successionPlanSchema);

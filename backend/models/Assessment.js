@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const AssessmentSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
   title: { type: String, required: true },
   description: { type: String },
   timeLimitMinutes: { type: Number, default: 30 },
@@ -8,5 +9,7 @@ const AssessmentSchema = new mongoose.Schema({
   type: { type: String, enum: ['Technical', 'Behavioral', 'Cultural', 'Leadership360'] },
   createdAt: { type: Date, default: Date.now }
 });
+
+AssessmentSchema.index({ organizationId: 1, type: 1 });
 
 export default mongoose.model('Assessment', AssessmentSchema);

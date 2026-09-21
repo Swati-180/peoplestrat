@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const FitmentSchema = new Schema({
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User' },
   employeeId: { type: Schema.Types.ObjectId, ref: 'Employee' },
   jdId: { type: Schema.Types.ObjectId, ref: 'JobDescription' },
@@ -13,6 +14,8 @@ const FitmentSchema = new Schema({
   mobilityReadinessScore: { type: Number, min: 0, max: 100 },
   createdAt: { type: Date, default: Date.now }
 });
+
+FitmentSchema.index({ organizationId: 1 });
 
 export default mongoose.model('FitmentMatch', FitmentSchema);
 

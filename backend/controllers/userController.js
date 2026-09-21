@@ -56,9 +56,9 @@ export const updateNotifications = async (req, res) => {
   try {
     const prefs = req.body;
     
-    let employee = await Employee.findOne({ email: req.user.email });
+    let employee = await Employee.findOne({ email: req.user.email, organizationId: req.organizationId });
     if (!employee) {
-      employee = new Employee({ email: req.user.email, name: req.user.username });
+      employee = new Employee({ email: req.user.email, name: req.user.username, organizationId: req.organizationId });
     }
     
     if (!employee.preferences) {

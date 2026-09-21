@@ -1,8 +1,11 @@
 import Employee from "../models/Employee.js";
+import User from "../models/User.js";
+import OrganizationMembership from "../models/OrganizationMembership.js";
 import xlsx from "xlsx";
 
 export const addEmployee = async (req, res) => {
   try {
+    req.body.organizationId = req.organizationId;
     const emp = await Employee.create(req.body);
     res.json({ success: true, data: emp });
   } catch (error) {
@@ -23,7 +26,18 @@ export const getEmployees = async (req, res) => {
       sortDir = 'asc'
     } = req.query;
 
-    const query = {};
+    if (!req.organizationId) {
+      return res.status(401).json({ success: false, error: 'Organization context required' });
+    }
+
+    const query = { organizationId: req.organizationId };
+    
+    // Status filter
+    const statusFilter = req.query.status || 'Active';
+    if (statusFilter !== 'all') {
+      query.status = statusFilter === 'Terminated' ? 'Terminated' : 'Active';
+    }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -116,8 +130,9 @@ export const uploadBulkEmployees = async (req, res) => {
         if (!emailToFind) continue;
 
         const employeeDoc = await Employee.findOneAndUpdate(
-          { email: emailToFind },
+          { email: emailToFind, organizationId: req.organizationId },
           {
+            organizationId: req.organizationId,
             userid,
             name: emp.name || emp.Name || emp.NAME,
             email: emailToFind,
@@ -156,7 +171,7 @@ export const uploadBulkEmployees = async (req, res) => {
 export const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findOne({ _id: id, organizationId: req.organizationId });
     
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
@@ -180,7 +195,10 @@ export const getEmployeeById = async (req, res) => {
 export const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Employee.findByIdAndUpdate(id, req.body, { new: true });
+    const updated = await Employee.findOneAndUpdate({ _id: id, organizationId: req.organizationId }, req.body, { new: true });
+    if (!updated) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -190,7 +208,10 @@ export const updateEmployee = async (req, res) => {
 export const deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    await Employee.findByIdAndDelete(id);
+    const deleted = await Employee.findOneAndDelete({ _id: id, organizationId: req.organizationId });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
     res.json({ success: true, message: 'Employee deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -199,7 +220,13 @@ export const deleteEmployee = async (req, res) => {
 
 export const getEmployeeStats = async (req, res) => {
   try {
-    const employees = await Employee.find();
+    const statusFilter = req.query.status || 'Active';
+    const query = { organizationId: req.organizationId };
+    if (statusFilter !== 'all') {
+      query.status = statusFilter === 'Terminated' ? 'Terminated' : 'Active';
+    }
+    
+    const employees = await Employee.find(query);
     
     if (employees.length === 0) {
       return res.json({
@@ -247,6 +274,68 @@ export const getEmployeeStats = async (req, res) => {
       },
       employees: formattedData,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const terminateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findOneAndUpdate(
+      { _id: id, organizationId: req.organizationId },
+      { status: 'Terminated' },
+      { new: true }
+    );
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found in your organization.' });
+    }
+
+    if (employee.email) {
+      const user = await User.findOne({ email: employee.email.toLowerCase() });
+      if (user) {
+        const membership = await OrganizationMembership.findOne({ userId: user._id, organizationId: req.organizationId });
+        if (membership && membership.status === 'active') {
+          membership.status = 'inactive';
+          membership.deactivatedByTermination = true;
+          await membership.save();
+        }
+      }
+    }
+
+    res.json({ success: true, data: employee, message: 'Employee terminated successfully. Organization access revoked.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const reactivateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findOneAndUpdate(
+      { _id: id, organizationId: req.organizationId },
+      { status: 'Active' },
+      { new: true }
+    );
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found in your organization.' });
+    }
+
+    if (employee.email) {
+      const user = await User.findOne({ email: employee.email.toLowerCase() });
+      if (user) {
+        const membership = await OrganizationMembership.findOne({ userId: user._id, organizationId: req.organizationId });
+        if (membership && membership.deactivatedByTermination === true) {
+          membership.status = 'active';
+          membership.deactivatedByTermination = false;
+          await membership.save();
+        }
+      }
+    }
+
+    res.json({ success: true, data: employee, message: 'Employee reactivated successfully. Organization access restored.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

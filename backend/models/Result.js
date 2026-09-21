@@ -7,6 +7,7 @@ const CategoryScoreSchema = new mongoose.Schema({
 });
 
 const ResultSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
   assessmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assessment', required: true },
   
@@ -20,5 +21,7 @@ const ResultSchema = new mongoose.Schema({
   timeTakenMinutes: { type: Number },
   completedAt: { type: Date, default: Date.now }
 });
+
+ResultSchema.index({ organizationId: 1, employeeId: 1, assessmentId: 1 });
 
 export default mongoose.model('Result', ResultSchema);

@@ -76,7 +76,11 @@ export default function SkillsLearning() {
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-6">
           <div className="text-center">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Fitment</p>
-            <p className="text-2xl font-black text-blue-600">{formatPercentage(data.fitmentScore)}</p>
+            {data.assessmentCompleted ? (
+              <p className="text-2xl font-black text-blue-600">{formatPercentage(data.fitmentScore)}</p>
+            ) : (
+              <p className="text-sm font-semibold text-slate-500 uppercase">Pending</p>
+            )}
           </div>
           <div className="h-8 w-px bg-slate-100" />
           <div className="text-center">
@@ -156,7 +160,9 @@ export default function SkillsLearning() {
               </h3>
               <p className="text-blue-100 text-sm leading-relaxed relative z-10">
                 You have {skillGaps.length} critical skill gaps for your current role. 
-                Focusing on these will improve your role fitment from <span className="font-bold text-white">{formatPercentage(data.fitmentScore || 0)}</span> to over <span className="font-bold text-white">90%</span>.
+                Focusing on these will improve your role fitment from <span className="font-bold text-white">
+                  {data.assessmentCompleted ? formatPercentage(data.fitmentScore) : "Pending"}
+                </span> to over <span className="font-bold text-white">90%</span>.
               </p>
             </div>
           </CardContent>

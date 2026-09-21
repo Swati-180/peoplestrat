@@ -7,20 +7,26 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Upload, FileText, UserPlus, Loader2, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/servicess/api";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftStatus } from "@/components/DraftStatus";
 
 export default function AddEmployee() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("manual");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Manual Form State
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    department: "",
-    position: "",
-    salary: "",
-    location: ""
+  // Manual Form State with Draft Resumability
+  const { data: formData, setData: setFormData, draftStatus, lastSaved, clearDraft, discardDraft } = useFormDraft({
+    workflowType: 'add_employee',
+    initialData: {
+      name: "",
+      email: "",
+      department: "",
+      position: "",
+      salary: "",
+      location: ""
+    },
+    debounceMs: 3000
   });
 
   // Bulk Upload State
@@ -39,7 +45,7 @@ export default function AddEmployee() {
         title: "Employee Added",
         description: `${formData.name} has been successfully added to the system.`,
       });
-      setFormData({ name: "", email: "", department: "", position: "", salary: "", location: "" });
+      await clearDraft();
     } catch (error) {
       toast({
         title: "Error adding employee",
@@ -113,6 +119,8 @@ export default function AddEmployee() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleManualSubmit} className="space-y-4">
+                <DraftStatus status={draftStatus} lastSaved={lastSaved} onDiscard={discardDraft} />
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name *</Label>

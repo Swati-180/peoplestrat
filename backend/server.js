@@ -20,6 +20,7 @@ import employeePortalRoutes from './routes/employeePortalRoutes.js';
 import userRoutes from './routes/user.js';
 import peerFeedbackRoutes from './routes/peerFeedbackRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
+import draftRoutes from './routes/draftRoutes.js';
 import seedDatabase from './seed.js';
 import User from './models/User.js';
 
@@ -74,6 +75,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/feedback", peerFeedbackRoutes);
 app.use("/api/assessments", assessmentsRoutes);
 app.use("/api/quiz", quizRoutes);
+app.use("/api/drafts", draftRoutes);
 
 // Fallback for old routes or additional ones if needed
 // app.use("/api/ai", aiRoutes); // I'll convert aiController to ESM if needed later

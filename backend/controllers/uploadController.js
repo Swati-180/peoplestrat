@@ -79,6 +79,7 @@ export const uploadJD = async (req, res) => {
     const parsedData = parseJD(req.file.buffer, req.file.originalname);
 
     const jd = new JobDescription({
+      organizationId: req.organizationId,
       jdId: `JD_${Date.now()}`,
       title: parsedData.title,
       department: parsedData.department,
@@ -112,6 +113,7 @@ export const uploadCV = async (req, res) => {
     const parsedData = parseCV(req.file.buffer, req.file.originalname);
 
     const cv = new cvUploads({
+      organizationId: req.organizationId,
       candidateName: parsedData.candidateName,
       email: parsedData.email,
       skills: parsedData.skills,
@@ -146,6 +148,7 @@ export const uploadActivity = async (req, res) => {
     const savedActivities = await ActivityUpload.insertMany(
       activities.map(activity => ({
         ...activity,
+        organizationId: req.organizationId,
         uploadedBy: req.user?.id
       }))
     );
@@ -270,8 +273,9 @@ export const uploadEmployeeData = async (req, res) => {
         const defaultPassword = await bcrypt.hash('pass1234', 10);
 
         const employeeDoc = await Employee.findOneAndUpdate(
-          { email },
+          { email, organizationId: req.organizationId },
           {
+            organizationId: req.organizationId,
             userid,
             name,
             email,
@@ -323,8 +327,8 @@ export const uploadEmployeeData = async (req, res) => {
     }
 
     // Get updated stats after upload
-    const totalEmployees = await Employee.countDocuments();
-    const allEmployees = await Employee.find();
+    const totalEmployees = await Employee.countDocuments({ organizationId: req.organizationId });
+    const allEmployees = await Employee.find({ organizationId: req.organizationId });
     const avgFitmentScore = allEmployees.length > 0 ? allEmployees.reduce((sum, e) => sum + (e.fitmentScore || 0), 0) / allEmployees.length : 0;
     const avgProductivity = allEmployees.length > 0 ? allEmployees.reduce((sum, e) => sum + (e.productivity || 0), 0) / allEmployees.length : 0;
     const avgUtilization = allEmployees.length > 0 ? allEmployees.reduce((sum, e) => sum + (e.utilization || 0), 0) / allEmployees.length : 0;
@@ -355,10 +359,10 @@ export const uploadEmployeeData = async (req, res) => {
 // Get upload stats
 export const getUploadStats = async (req, res) => {
   try {
-    const jdCount = await JobDescription.countDocuments();
-    const cvCount = await cvUploads.countDocuments();
-    const activityCount = await ActivityUpload.countDocuments();
-    const employeeCount = await Employee.countDocuments();
+    const jdCount = await JobDescription.countDocuments({ organizationId: req.organizationId });
+    const cvCount = await cvUploads.countDocuments({ organizationId: req.organizationId });
+    const activityCount = await ActivityUpload.countDocuments({ organizationId: req.organizationId });
+    const employeeCount = await Employee.countDocuments({ organizationId: req.organizationId });
 
     const stats = [
       { type: 'jd', count: jdCount },
@@ -453,7 +457,7 @@ export const verifyAndSaveResume = async (req, res) => {
     const email = req.user?.email;
     if (!email) return res.status(401).json({ success: false, error: 'Unauthorized' });
     
-    const emp = await Employee.findOne({ email });
+    const emp = await Employee.findOne({ email, organizationId: req.organizationId });
     if (!emp) return res.status(404).json({ success: false, error: 'Employee not found' });
 
     // Validate inputs

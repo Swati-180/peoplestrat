@@ -13,9 +13,9 @@ import { generateAutomationRecommendation } from '../services/recommendationEngi
  */
 export const getRecommendations = async (req, res) => {
   try {
-    const employees = await Employee.find({});
-    const analyses = await AnalysisResult.find({}).populate('employee_id', 'name band process_area sub_process');
-    const fteWorkloads = await FTEWorkload.find({});
+    const employees = await Employee.find({ organizationId: req.organizationId });
+    const analyses = await AnalysisResult.find({ organizationId: req.organizationId }).populate('employee_id', 'name band process_area sub_process');
+    const fteWorkloads = await FTEWorkload.find({ organizationId: req.organizationId });
 
     if (!employees || employees.length === 0) {
       return res.status(200).json({ recommendations: [], totalEmployeesAnalysis: 0 });

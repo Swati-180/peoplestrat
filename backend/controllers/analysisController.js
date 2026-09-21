@@ -24,8 +24,13 @@ export const runAnalysis = async (req, res) => {
   try {
     const { employeeId } = req.query;
 
+    if (!req.organizationId) {
+      return res.status(401).json({ success: false, error: 'Organization context required' });
+    }
+
     // Get employees to analyze
     const query = employeeId ? { _id: employeeId } : {};
+    query.organizationId = req.organizationId;
     const employees = await Employee.find(query);
 
     if (employees.length === 0) {
@@ -38,7 +43,7 @@ export const runAnalysis = async (req, res) => {
     for (const employee of employees) {
       try {
         // Get performance records for this employee
-        const perfRecords = await PerformanceRecord.find({ employee_id: employee._id })
+        const perfRecords = await PerformanceRecord.find({ employee_id: employee._id, organizationId: req.organizationId })
           .sort({ record_date: -1 })
           .limit(30); // Last 30 records
 
@@ -66,7 +71,7 @@ export const runAnalysis = async (req, res) => {
 
         // Save analysis result  
         const analysisResult = await AnalysisResult.findOneAndUpdate(
-          { employee_id: employee._id },
+          { employee_id: employee._id, organizationId: req.organizationId },
           {
             employee_id: employee._id,
             productivity_score: productivity,
@@ -137,8 +142,12 @@ export const getAnalysisResults = async (req, res) => {
   try {
     const { process_area, band, recommendation_type, page = 1, limit = 50 } = req.query;
 
+    if (!req.organizationId) {
+      return res.status(401).json({ success: false, error: 'Organization context required' });
+    }
+
     // Build filter from employee attributes
-    const employeeFilter = {};
+    const employeeFilter = { organizationId: req.organizationId };
     if (process_area) employeeFilter.process_area = process_area;
     if (band) employeeFilter.band = band;
 
@@ -148,7 +157,7 @@ export const getAnalysisResults = async (req, res) => {
       employeeIds = filteredEmployees.map(e => e._id);
     }
 
-    const analysisFilter = {};
+    const analysisFilter = { organizationId: req.organizationId };
     if (employeeIds) analysisFilter.employee_id = { $in: employeeIds };
     if (recommendation_type) analysisFilter.recommendation_type = recommendation_type;
 
@@ -182,13 +191,13 @@ export const getEmployeeAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findOne({ _id: id, organizationId: req.organizationId });
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found' });
     }
 
-    const analysis = await AnalysisResult.findOne({ employee_id: id }).sort({ analysis_date: -1 });
-    const recentPerformance = await PerformanceRecord.find({ employee_id: id })
+    const analysis = await AnalysisResult.findOne({ employee_id: id, organizationId: req.organizationId }).sort({ analysis_date: -1 });
+    const recentPerformance = await PerformanceRecord.find({ employee_id: id, organizationId: req.organizationId })
       .sort({ record_date: -1 })
       .limit(10);
 
@@ -217,9 +226,13 @@ export const getEmployeeAnalysis = async (req, res) => {
  */
 export const getAnalysisSummary = async (req, res) => {
   try {
-    const employees = await Employee.find();
-    const analysisResults = await AnalysisResult.find();
-    const fteWorkloads = await FTEWorkload.find();
+    if (!req.organizationId) {
+      return res.status(401).json({ success: false, error: 'Organization context required' });
+    }
+
+    const employees = await Employee.find({ organizationId: req.organizationId });
+    const analysisResults = await AnalysisResult.find({ organizationId: req.organizationId });
+    const fteWorkloads = await FTEWorkload.find({ organizationId: req.organizationId });
 
     const totalEmployees = employees.length;
 
@@ -333,7 +346,7 @@ export const getAnalysisSummary = async (req, res) => {
   }
 };
 
-import WellbeingCheckin from '../models/WellbeingCheckin.js';
+import PulseCheck from '../models/PulseCheck.js';
 import { calculateDeterministicFlightRisk, generateLLMInsights } from '../services/flightRiskEngine.js';
 
 /**
@@ -348,13 +361,13 @@ export const predictFlightRisk = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid Employee ID format' });
     }
 
-    const employee = await Employee.findById(employeeId);
+    const employee = await Employee.findOne({ _id: employeeId, organizationId: req.organizationId });
     if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' });
 
-    const perfRecords = await PerformanceRecord.find({ employee_id: employee._id }).sort({ record_date: -1 }).limit(30);
-    const wellbeingCheckins = await WellbeingCheckin.find({ employeeId: employee._id }).sort({ date: -1 }).limit(10);
+    const perfRecords = await PerformanceRecord.find({ employee_id: employee._id, organizationId: req.organizationId }).sort({ record_date: -1 }).limit(30);
+    const pulseChecks = await PulseCheck.find({ employeeId: employee._id, organizationId: req.organizationId }).sort({ checkDate: -1 }).limit(10);
 
-    const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, wellbeingCheckins);
+    const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, pulseChecks);
 
     if (!riskResult.success) {
       return res.status(400).json({
@@ -379,7 +392,7 @@ export const predictFlightRisk = async (req, res) => {
     }
 
     // Upsert AnalysisResult
-    const analysis = await AnalysisResult.findOne({ employee_id: employee._id });
+    const analysis = await AnalysisResult.findOne({ employee_id: employee._id, organizationId: req.organizationId });
     
     let existingActions = analysis ? analysis.actionItems : [];
     // Deduplicate: remove existing [Flight Risk] items
@@ -387,7 +400,7 @@ export const predictFlightRisk = async (req, res) => {
     const finalActionItems = [...existingActions, ...newActionItems];
 
     const updatedAnalysis = await AnalysisResult.findOneAndUpdate(
-      { employee_id: employee._id },
+      { employee_id: employee._id, organizationId: req.organizationId },
       {
         flightRiskScore: riskResult.score,
         flightRiskFactors: aiInsights.success ? aiInsights.factors : [],
@@ -422,17 +435,17 @@ export const predictFlightRisk = async (req, res) => {
  */
 export const predictFlightRiskBatch = async (req, res) => {
   try {
-    const employees = await Employee.find();
+    const employees = await Employee.find({ organizationId: req.organizationId });
     let processed = 0;
     
     for (const employee of employees) {
-      const perfRecords = await PerformanceRecord.find({ employee_id: employee._id }).sort({ record_date: -1 }).limit(30);
-      const wellbeingCheckins = await WellbeingCheckin.find({ employeeId: employee._id }).sort({ date: -1 }).limit(10);
+      const perfRecords = await PerformanceRecord.find({ employee_id: employee._id, organizationId: req.organizationId }).sort({ record_date: -1 }).limit(30);
+      const pulseChecks = await PulseCheck.find({ employeeId: employee._id, organizationId: req.organizationId }).sort({ checkDate: -1 }).limit(10);
       
-      const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, wellbeingCheckins);
+      const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, pulseChecks);
       if (riskResult.success) {
         await AnalysisResult.findOneAndUpdate(
-          { employee_id: employee._id },
+          { employee_id: employee._id, organizationId: req.organizationId },
           { flightRiskScore: riskResult.score },
           { upsert: true, new: true }
         );
@@ -454,7 +467,7 @@ export const predictFlightRiskBatch = async (req, res) => {
 export const getFlightRisk = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const analysis = await AnalysisResult.findOne({ employee_id: employeeId });
+    const analysis = await AnalysisResult.findOne({ employee_id: employeeId, organizationId: req.organizationId });
 
     if (!analysis || analysis.flightRiskScore === undefined) {
       return res.status(404).json({ success: false, error: 'Flight risk not calculated yet.' });
@@ -485,7 +498,7 @@ export const getFlightRisk = async (req, res) => {
  */
 export const getGapAnalysis = async (req, res) => {
   try {
-    const employees = await Employee.find().select('_id name position department fitmentScore productivity fatigueScore skills');
+    const employees = await Employee.find({ organizationId: req.organizationId }).select('_id name position department fitmentScore productivity fatigueScore skills');
     
     const employeesWithGaps = [];
     const severityDistribution = { High: 0, Medium: 0, Low: 0 };
@@ -557,7 +570,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy' });
 export const getGapInterventions = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const employee = await Employee.findById(employeeId);
+    const employee = await Employee.findOne({ _id: employeeId, organizationId: req.organizationId });
     
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found' });

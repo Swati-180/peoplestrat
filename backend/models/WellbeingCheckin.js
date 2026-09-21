@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const wellbeingCheckinSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
   date: { type: Date, required: true },
   source: { 
@@ -14,6 +15,6 @@ const wellbeingCheckinSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ensure fast queries for history
-wellbeingCheckinSchema.index({ employeeId: 1, date: -1 });
+wellbeingCheckinSchema.index({ organizationId: 1, employeeId: 1, date: -1 });
 
 export default mongoose.model('WellbeingCheckin', wellbeingCheckinSchema);

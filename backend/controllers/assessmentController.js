@@ -6,7 +6,7 @@ import Employee from '../models/Employee.js';
 export const createAssessment = async (req, res) => {
   try {
     const { title, description, timeLimitMinutes } = req.body;
-    const newAssessment = new Assessment({ title, description, timeLimitMinutes });
+    const newAssessment = new Assessment({ title, description, timeLimitMinutes, organizationId: req.organizationId });
     await newAssessment.save();
     res.json({ success: true, data: newAssessment });
   } catch (err) {
@@ -20,7 +20,10 @@ export const addQuestion = async (req, res) => {
     const { text, category, options, weight } = req.body;
     const assessmentId = req.params.id;
     
-    const question = new Question({ assessmentId, text, category, options, weight });
+    const assessment = await Assessment.findOne({ _id: assessmentId, organizationId: req.organizationId || null });
+    if (!assessment) return res.status(403).json({ success: false, error: 'Not authorized to modify this assessment' });
+
+    const question = new Question({ assessmentId, text, category, options, weight, organizationId: assessment.organizationId });
     await question.save();
     res.json({ success: true, data: question });
   } catch (err) {
@@ -31,10 +34,10 @@ export const addQuestion = async (req, res) => {
 
 export const getAssessmentForStart = async (req, res) => {
   try {
-    const assessment = await Assessment.findById(req.params.id);
+    const assessment = await Assessment.findOne({ _id: req.params.id, organizationId: { $in: [null, req.organizationId] } });
     if (!assessment) return res.status(404).json({ success: false, error: 'Assessment not found' });
 
-    const questions = await Question.find({ assessmentId: req.params.id }).select('-options.isCorrect');
+    const questions = await Question.find({ assessmentId: req.params.id, organizationId: assessment.organizationId }).select('-options.isCorrect');
     
     res.json({ success: true, data: { assessment, questions } });
   } catch (err) {
@@ -48,7 +51,10 @@ export const submitAssessmentAndGrade = async (req, res) => {
     const assessmentId = req.params.id;
     const answers = req.body.answers; 
     
-    const questions = await Question.find({ assessmentId });
+    const assessment = await Assessment.findOne({ _id: assessmentId, organizationId: { $in: [null, req.organizationId] } });
+    if (!assessment) return res.status(404).json({ success: false, error: 'Assessment not found' });
+
+    const questions = await Question.find({ assessmentId, organizationId: assessment.organizationId });
     if (!questions || questions.length === 0) return res.status(400).json({ success: false, error: 'No questions in this assessment' });
 
     let overallScore = 0;
@@ -81,13 +87,14 @@ export const submitAssessmentAndGrade = async (req, res) => {
       maxScore: categoryScoresMap[cat].max
     }));
 
-    // Find employee using User ID from JWT
-    const employee = await Employee.findOne({ userId: req.user.id });
+    // Find employee using email from JWT User payload
+    const employee = await Employee.findOne({ email: req.user.email, organizationId: req.organizationId });
     if (!employee) return res.status(404).json({ success: false, error: 'Employee profile missing' });
 
     const result = new Result({
       employeeId: employee._id, // References Employee Profile
       assessmentId,
+      organizationId: req.organizationId,
       overallScore,
       maxPossibleScore,
       percentage,

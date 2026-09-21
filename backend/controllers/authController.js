@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 import Invitation from '../models/Invitation.js';
+import OrganizationMembership from '../models/OrganizationMembership.js';
+import Organization from '../models/Organization.js';
 
 // =====================
 // REGISTER
@@ -155,6 +157,27 @@ export const getMe = async (req, res) => {
 
     res.json(user);
 
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+// =====================
+// GET USER ORGANIZATIONS
+// =====================
+export const getMyOrganizations = async (req, res) => {
+  try {
+    const memberships = await OrganizationMembership.find({ 
+      userId: req.user.id, 
+      status: 'active' 
+    }).populate('organizationId');
+
+    res.json({
+      success: true,
+      data: memberships
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
