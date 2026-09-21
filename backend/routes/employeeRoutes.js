@@ -8,6 +8,8 @@ import {
   updateEmployee,
   deleteEmployee,
   getEmployeeStats,
+  terminateEmployee,
+  reactivateEmployee,
 } from "../controllers/employeeController.js";
 
 import { protect, managerOnly, requireOrganization } from '../middleware/auth.js';
@@ -26,5 +28,7 @@ router.get("/stats", getEmployeeStats);
 router.get("/:id", getEmployeeById);
 router.put("/:id", updateEmployee);
 router.delete("/:id", deleteEmployee);
+router.post("/:id/terminate", terminateEmployee);
+router.post("/:id/reactivate", reactivateEmployee);
 
 export default router;

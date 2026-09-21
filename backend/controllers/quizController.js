@@ -195,12 +195,18 @@ async function runPostQuizPipeline(quizResult, results, skills) {
       return;
     }
 
+    if (String(emp.organizationId) !== String(quizResult.organizationId)) {
+      console.error(`[QUIZ] pipeline: Org mismatch between employee ${emp.organizationId} and quiz ${quizResult.organizationId}, skipping Employee update`);
+      return;
+    }
+
     try {
       const rawResponses = (skills || []).map((s, i) => ({
         questionId: `mayamaya-skill-${i}`,
         responseValue: clampScore(s?.score, 3),
       }));
       await BehavioralResult.create({
+        organizationId: quizResult.organizationId,
         employeeId: emp._id,
         scores: finalScores,
         rawResponses,

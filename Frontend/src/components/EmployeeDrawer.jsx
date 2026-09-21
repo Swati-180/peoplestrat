@@ -165,6 +165,9 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={risk} type="risk" />
             <StatusBadge status={fitmentBand} type="fitment" />
+            {employee.status === 'Terminated' && (
+              <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100 border-none">Terminated</Badge>
+            )}
           </div>
         </div>
 
@@ -411,15 +414,57 @@ export default function EmployeeDrawer({ employee, onClose, contextData = {}, de
         {/* Footer Actions */}
         <div className="p-6 border-t bg-gray-50 mt-auto shrink-0">
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => {
-                toast({ title: "Email Sent", description: `Performance brief sent to manager.` });
-              }}
-            >
-              Email Brief
-            </Button>
+            {employee.status === 'Terminated' ? (
+              <Button
+                variant="outline"
+                className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  if (confirm("Are you sure you want to reactivate this employee? This will restore their organization access.")) {
+                    setIsSubmitting(true);
+                    try {
+                      const res = await api.post(`/employees/${empId}/reactivate`);
+                      if (res.data.success) {
+                        toast({ title: "Reactivated", description: "Employee access restored." });
+                        if (onUpdate) onUpdate(res.data.data);
+                        else onClose();
+                      }
+                    } catch (err) {
+                      toast({ title: "Failed", description: err.response?.data?.error || "Failed to reactivate.", variant: "destructive" });
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }}
+              >
+                Reactivate
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  if (confirm("Are you sure you want to terminate this employee? This will revoke their organization access immediately.")) {
+                    setIsSubmitting(true);
+                    try {
+                      const res = await api.post(`/employees/${empId}/terminate`);
+                      if (res.data.success) {
+                        toast({ title: "Terminated", description: "Employee terminated and access revoked." });
+                        if (onUpdate) onUpdate(res.data.data);
+                        else onClose();
+                      }
+                    } catch (err) {
+                      toast({ title: "Failed", description: err.response?.data?.error || "Failed to terminate.", variant: "destructive" });
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }}
+              >
+                Terminate
+              </Button>
+            )}
             <Button
               className="flex-1 bg-blue-600 hover:bg-blue-700"
               onClick={() => {

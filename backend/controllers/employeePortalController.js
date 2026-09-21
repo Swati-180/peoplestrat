@@ -12,15 +12,17 @@ const findMyEmployee = async (req) => {
 };
 
 // Helper: add scores object for frontend compatibility
-const addScores = (emp) => {
+const addScores = (emp, hasBehavioralData) => {
   const obj = emp.toObject ? emp.toObject() : { ...emp };
   obj.scores = {
     productivity: obj.productivity || 0,
     utilization: obj.utilization || 0,
-    fitment: obj.fitmentScore || 0,
     fatigue: obj.fatigueScore || 0,
     automationPotential: obj.automationPotential || 0,
   };
+  if (hasBehavioralData) {
+    obj.scores.fitment = obj.fitmentScore || 0;
+  }
   return obj;
 };
 
@@ -29,7 +31,8 @@ export const getMyProfile = async (req, res) => {
   try {
     const emp = await findMyEmployee(req);
     if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found for your account.' });
-    res.json({ success: true, data: addScores(emp) });
+    const behavioral = await BehavioralResult.findOne({ employeeId: emp._id, organizationId: req.organizationId });
+    res.json({ success: true, data: addScores(emp, !!behavioral) });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -47,7 +50,9 @@ export const updateMyProfile = async (req, res) => {
     });
     emp.updatedAt = new Date();
     await emp.save();
-    res.json({ success: true, data: addScores(emp) });
+    
+    const behavioral = await BehavioralResult.findOne({ employeeId: emp._id, organizationId: req.organizationId });
+    res.json({ success: true, data: addScores(emp, !!behavioral) });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -139,6 +144,8 @@ export const getMySkills = async (req, res) => {
     const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
 
+    const behavioral = await BehavioralResult.findOne({ employeeId: emp._id, organizationId: req.organizationId });
+
     // Build skill matrix from employee's skills array
     const currentSkills = (emp.skills || []).map(s => ({
       name: s,
@@ -173,7 +180,8 @@ export const getMySkills = async (req, res) => {
         currentSkills,
         requiredSkills,
         skillGaps: gaps,
-        fitmentScore: emp.fitmentScore || analysis?.fitment_score || 0,
+        assessmentCompleted: !!behavioral,
+        fitmentScore: behavioral ? (emp.fitmentScore || analysis?.fitment_score || 0) : null,
         skillMatchPct: requiredSkills.length > 0
           ? Math.round(((requiredSkills.length - gaps.length) / requiredSkills.length) * 100)
           : 0,
@@ -239,8 +247,10 @@ export const getMyCareer = async (req, res) => {
 
     const analysis = await AnalysisResult.findOne({ employee_id: emp._id, organizationId: req.organizationId })
       .sort({ analysis_date: -1 });
+      
+    const behavioral = await BehavioralResult.findOne({ employeeId: emp._id, organizationId: req.organizationId });
 
-    const fitment = emp.fitmentScore || analysis?.fitment_score || 0;
+    const fitment = behavioral ? (emp.fitmentScore || analysis?.fitment_score || 0) : null;
     const productivity = emp.productivity || analysis?.productivity_score || 0;
 
     // Career path
@@ -263,7 +273,9 @@ export const getMyCareer = async (req, res) => {
       { skill: 'Strategic Planning', met: false },
     ] : [];
 
-    const promotionReadiness = Math.round((fitment * 0.4 + productivity * 0.4 + Math.min(emp.experience_years * 10, 100) * 0.2));
+    const promotionReadiness = behavioral 
+      ? Math.round((fitment * 0.4 + productivity * 0.4 + Math.min(emp.experience_years * 10, 100) * 0.2)) 
+      : null;
 
     res.json({
       success: true,
@@ -272,6 +284,7 @@ export const getMyCareer = async (req, res) => {
         email: emp.email,
         position: emp.position,
         department: emp.department,
+        assessmentCompleted: !!behavioral,
         fitmentScore: fitment,
         performanceScore: productivity,
         fatigueScore: emp.fatigueScore || analysis?.fatigue_score || 0,
@@ -283,13 +296,13 @@ export const getMyCareer = async (req, res) => {
         careerPath,
         nextRole: nextRole?.title || 'Director',
         nextRoleRequirements,
-        radarData: [
-          { subject: 'Communication', A: emp.communication || 70, fullMark: 100 },
-          { subject: 'Problem Solving', A: emp.problemSolving || 80, fullMark: 100 },
-          { subject: 'Teamwork', A: emp.teamwork || 75, fullMark: 100 },
-          { subject: 'Adaptability', A: emp.adaptability || 85, fullMark: 100 },
-          { subject: 'Creativity', A: emp.creativity || 65, fullMark: 100 },
-        ]
+        radarData: behavioral ? [
+          { subject: 'Communication', A: emp.communication || 0, fullMark: 100 },
+          { subject: 'Leadership', A: emp.leadership || 0, fullMark: 100 },
+          { subject: 'Teamwork', A: emp.teamwork || 0, fullMark: 100 },
+          { subject: 'Adaptability', A: emp.adaptability || 0, fullMark: 100 },
+          { subject: 'Resilience', A: emp.resilience || 0, fullMark: 100 },
+        ] : null
       },
     });
   } catch (error) {
@@ -377,125 +390,12 @@ export const submitPulseCheck = async (req, res) => {
     emp.fatigueScore = fatigueScore;
     await emp.save();
 
-    let riskLevel = 'Healthy';
-    let recommendation = 'Your workload balance looks healthy. Keep it up!';
-    if (fatigueScore >= 75) { 
-      riskLevel = 'Burnout Risk'; 
-      recommendation = 'Your stress levels are high. Consider taking a mental health day or discussing workload prioritization.';
-    }
-    else if (fatigueScore >= 50) { 
-      riskLevel = 'Moderate Fatigue';
-      recommendation = 'You are experiencing some fatigue. Try to ensure you are taking adequate breaks.';
-    }
-
     res.json({
       success: true,
       data: {
         fatigueScore,
         riskLevel,
         recommendation
-      }
-    });
-
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// POST /api/employee/assessments/behavior
-export const submitBehaviorAssessment = async (req, res) => {
-  try {
-    const emp = await findMyEmployee(req);
-    if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
-
-    const { responses } = req.body;
-    if (!responses || !Array.isArray(responses) || responses.length === 0) {
-      return res.status(400).json({ success: false, error: 'No responses provided.' });
-    }
-
-    // A deterministic mapping of questions to traits.
-    // In a real app, this would be looked up from a DB collection of questions.
-    // For this implementation, we map based on question IDs or indices to demonstrate deterministic scoring.
-    const traitScores = {
-      communication: { total: 0, count: 0 },
-      leadership: { total: 0, count: 0 },
-      adaptability: { total: 0, count: 0 },
-      resilience: { total: 0, count: 0 },
-      teamwork: { total: 0, count: 0 }
-    };
-    console.log('[BEHAVIOR DEBUG] NEW SCORING CODE ACTIVE');
-    console.log('[BEHAVIOR DEBUG] responses =', JSON.stringify(responses, null, 2));
-
-    const traitMap = {
-      'q1': 'communication', 'q2': 'communication',
-      'q3': 'leadership', 'q4': 'leadership',
-      'q5': 'adaptability', 'q6': 'adaptability',
-      'q7': 'resilience', 'q8': 'resilience',
-      'q9': 'teamwork', 'q10': 'teamwork'
-    };
-    console.log('[BEHAVIOR DEBUG] Backend traitMap:', traitMap);
-
-    // Calculate scores (1-5 Likert scale -> 20-100 score)
-    responses.forEach(r => {
-      console.log(`[BEHAVIOR DEBUG] processing: questionId=${r.questionId}, responseValue=${r.responseValue}, typeof responseValue=${typeof r.responseValue}`);
-      if (r.responseValue < 1 || r.responseValue > 5) return; // bounds check
-      const trait = traitMap[r.questionId];
-      if (trait) {
-        if (typeof r.responseValue !== 'number' || !Number.isFinite(r.responseValue)) {
-          throw new Error(`Invalid responseValue for question ${r.questionId}: ${r.responseValue}`);
-        }
-        traitScores[trait].total += (r.responseValue * 20); // 5 -> 100, 4 -> 80, etc.
-        traitScores[trait].count += 1;
-        console.log(`[BEHAVIOR DEBUG] updated trait=${trait}, total=${traitScores[trait].total}, count=${traitScores[trait].count}`);
-      }
-    });
-
-    const finalScores = {
-      communication: traitScores.communication.count > 0 ? Math.round(traitScores.communication.total / traitScores.communication.count) : (emp.communication || 0),
-      leadership: traitScores.leadership.count > 0 ? Math.round(traitScores.leadership.total / traitScores.leadership.count) : (emp.leadership || 0),
-      adaptability: traitScores.adaptability.count > 0 ? Math.round(traitScores.adaptability.total / traitScores.adaptability.count) : (emp.adaptability || 0),
-      resilience: traitScores.resilience.count > 0 ? Math.round(traitScores.resilience.total / traitScores.resilience.count) : (emp.resilience || 0),
-      teamwork: traitScores.teamwork.count > 0 ? Math.round(traitScores.teamwork.total / traitScores.teamwork.count) : (emp.teamwork || 0),
-    };
-
-    console.log('[BEHAVIOR DEBUG] finalScores before BehavioralResult.create:', finalScores);
-
-    // Defensive validation before saving
-    for (const [trait, score] of Object.entries(finalScores)) {
-      if (!Number.isFinite(score)) {
-        throw new Error(`Calculation produced NaN for trait: ${trait}. Check traitScores or emp fallback. traitScores count: ${traitScores[trait]?.count}, total: ${traitScores[trait]?.total}, emp value: ${emp[trait]}`);
-      }
-    }
-
-    // Save result
-    const result = new BehavioralResult({
-      organizationId: req.organizationId,
-      employeeId: emp._id,
-      scores: finalScores,
-      rawResponses: responses
-    });
-    await result.save();
-
-    // Update Employee profile
-    emp.communication = finalScores.communication;
-    emp.leadership = finalScores.leadership;
-    emp.adaptability = finalScores.adaptability;
-    emp.resilience = finalScores.resilience;
-    emp.teamwork = finalScores.teamwork;
-    
-    // Auto-update fitment based on new soft skills
-    const avgSoftSkills = (emp.communication + emp.leadership + emp.adaptability + emp.resilience + emp.teamwork) / 5;
-    const oldFitment = emp.fitmentScore || 50;
-    // Simple fitment update: 70% old fitment (technical/experience), 30% soft skills
-    emp.fitmentScore = Math.round((oldFitment * 0.7) + (avgSoftSkills * 0.3));
-
-    await emp.save();
-
-    res.json({
-      success: true,
-      data: {
-        scores: finalScores,
-        message: 'Behavioral profile updated successfully.'
       }
     });
 

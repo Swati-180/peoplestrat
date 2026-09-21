@@ -49,6 +49,121 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
 
   // Helper function to render message content based on mode
   const renderMessageContent = (message) => {
+    if (isCareerCoach && message.type === 'ai') {
+      // State C: Genuine Groq/API failure — isFallback explicitly true
+      if (message.isFallback) {
+        return (
+          <div className="space-y-3">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+              <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Career insights temporarily unavailable</p>
+                <p className="text-xs text-amber-700 mt-0.5">The AI service is experiencing issues. Please try again in a moment.</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // States A & B: Real Groq response — parse the JSON
+      try {
+        const parsed = JSON.parse(message.content);
+        const hasFitment = parsed.fitmentScore !== null && parsed.fitmentScore !== undefined
+                           && parsed.fitmentLabel && parsed.fitmentLabel !== 'Unavailable';
+
+        return (
+          <div className="w-full space-y-4">
+            {/* Summary — always shown from real AI */}
+            <div className="text-sm text-slate-800 leading-relaxed">
+              {parsed.summary}
+            </div>
+
+            {/* State B: Real fitment score present */}
+            {hasFitment && (
+              <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center justify-between">
+                <span className="text-sm font-semibold text-blue-900">Fitment</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                    {parsed.fitmentLabel}
+                  </span>
+                  <span className="text-sm font-bold text-blue-700">{parsed.fitmentScore}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* State A: Real AI response but no fitment data — small factual note only */}
+            {!hasFitment && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-start gap-2">
+                <span className="text-slate-400 shrink-0 text-base">ℹ</span>
+                <p className="text-xs text-slate-500">
+                  Fitment score not yet available. Complete your{' '}
+                  <span className="font-semibold text-slate-600">Behavioral Assessment</span>{' '}
+                  to unlock your personalized fitment insights.
+                </p>
+              </div>
+            )}
+
+            {/* Focus Areas */}
+            {parsed.focusAreas && parsed.focusAreas.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Key Focus Areas</h4>
+                {parsed.focusAreas.map((area, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-sm font-bold text-slate-800">{area.title}</span>
+                      {area.potential && (
+                        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          +{area.potential}% potential
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600">{area.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Recommended Skills */}
+            {parsed.recommendedSkills && parsed.recommendedSkills.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recommended Skills</h4>
+                <div className="flex flex-wrap gap-2">
+                  {parsed.recommendedSkills.map((skill, idx) => (
+                    <span key={idx} className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Career Actions */}
+            {parsed.careerActions && parsed.careerActions.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Next Steps</h4>
+                <ul className="list-disc list-inside text-xs text-slate-600 space-y-1">
+                  {parsed.careerActions.map((action, idx) => (
+                    <li key={idx}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+      } catch (e) {
+        // JSON parse failed — treat as fallback
+        return (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+            <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Career insights temporarily unavailable</p>
+              <p className="text-xs text-amber-700 mt-0.5">The AI service is experiencing issues. Please try again in a moment.</p>
+            </div>
+          </div>
+        );
+      }
+    }
+
     if (isFloating) {
       // Text-only mode for floating chat
       let textContent = message.content;
@@ -208,7 +323,7 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
 
                           <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
                             <span>{message.timestamp.toLocaleTimeString()}</span>
-                            {message.isFallback && (
+                            {message.isFallback && !isCareerCoach && (
                               <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-medium border border-amber-200">
                                 Rule-Based Fallback
                               </span>
@@ -320,7 +435,7 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
                         {renderMessageContent(message)}
                         <div className={`text-[10px] mt-2 font-medium opacity-60 flex items-center gap-2 ${message.type === "user" ? "text-blue-100" : "text-slate-500"}`}>
                           <span>{message.timestamp.toLocaleString()}</span>
-                          {message.isFallback && (
+                          {message.isFallback && !isCareerCoach && (
                             <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-medium border border-amber-200">
                               Rule-Based Fallback
                             </span>

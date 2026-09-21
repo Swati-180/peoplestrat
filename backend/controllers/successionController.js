@@ -51,7 +51,7 @@ export const predictSuccessors = async (req, res) => {
     }
 
     // Get all active employees for this organization
-    const employees = await Employee.find({ organizationId: req.organizationId });
+    const employees = await Employee.find({ organizationId: req.organizationId, status: 'Active' });
     const analysisResults = await AnalysisResult.find({ organizationId: req.organizationId });
     
     // Create a map of employeeId -> analysisResult

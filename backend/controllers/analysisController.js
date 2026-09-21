@@ -346,7 +346,7 @@ export const getAnalysisSummary = async (req, res) => {
   }
 };
 
-import WellbeingCheckin from '../models/WellbeingCheckin.js';
+import PulseCheck from '../models/PulseCheck.js';
 import { calculateDeterministicFlightRisk, generateLLMInsights } from '../services/flightRiskEngine.js';
 
 /**
@@ -365,9 +365,9 @@ export const predictFlightRisk = async (req, res) => {
     if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' });
 
     const perfRecords = await PerformanceRecord.find({ employee_id: employee._id, organizationId: req.organizationId }).sort({ record_date: -1 }).limit(30);
-    const wellbeingCheckins = await WellbeingCheckin.find({ employeeId: employee._id, organizationId: req.organizationId }).sort({ date: -1 }).limit(10);
+    const pulseChecks = await PulseCheck.find({ employeeId: employee._id, organizationId: req.organizationId }).sort({ checkDate: -1 }).limit(10);
 
-    const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, wellbeingCheckins);
+    const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, pulseChecks);
 
     if (!riskResult.success) {
       return res.status(400).json({
@@ -440,9 +440,9 @@ export const predictFlightRiskBatch = async (req, res) => {
     
     for (const employee of employees) {
       const perfRecords = await PerformanceRecord.find({ employee_id: employee._id, organizationId: req.organizationId }).sort({ record_date: -1 }).limit(30);
-      const wellbeingCheckins = await WellbeingCheckin.find({ employeeId: employee._id, organizationId: req.organizationId }).sort({ date: -1 }).limit(10);
+      const pulseChecks = await PulseCheck.find({ employeeId: employee._id, organizationId: req.organizationId }).sort({ checkDate: -1 }).limit(10);
       
-      const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, wellbeingCheckins);
+      const riskResult = calculateDeterministicFlightRisk(employee, perfRecords, pulseChecks);
       if (riskResult.success) {
         await AnalysisResult.findOneAndUpdate(
           { employee_id: employee._id, organizationId: req.organizationId },

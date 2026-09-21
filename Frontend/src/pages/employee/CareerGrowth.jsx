@@ -104,7 +104,14 @@ export default function CareerGrowth() {
 
             {/* Stats Cluster */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <GrowthMetric label="Fitment Score" value={data.fitmentScore} color="text-blue-600" icon={Target} />
+                {data.assessmentCompleted ? (
+                  <GrowthMetric label="Fitment Score" value={data.fitmentScore} color="text-blue-600" icon={Target} />
+                ) : (
+                  <Card className="border-none shadow-sm overflow-hidden p-6 bg-slate-50 flex flex-col justify-center items-center text-center">
+                    <Brain className="h-6 w-6 text-slate-300 mb-2" />
+                    <span className="text-xs font-bold text-slate-500 uppercase">Assessment Pending</span>
+                  </Card>
+                )}
                 <GrowthMetric label="Performance" value={data.performanceScore} color="text-emerald-600" icon={Award} />
                 <GrowthMetric label="Utilization" value={data.utilization} color="text-amber-600" icon={Zap} />
                 <GrowthMetric label="Fatigue Risk" value={data.fatigueScore} color={data.fatigueScore > 70 ? "text-red-600" : "text-slate-600"} icon={AlertTriangle} />
@@ -176,21 +183,31 @@ export default function CareerGrowth() {
                     <div>
                         <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 h-full">
                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Competency Radar</p>
-                             <div className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.radarData}>
-                                        <PolarGrid stroke="#e2e8f0" />
-                                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} />
-                                        <Radar
-                                            name="Competency"
-                                            dataKey="A"
-                                            stroke="#3b82f6"
-                                            fill="#3b82f6"
-                                            fillOpacity={0.4}
-                                        />
-                                    </RadarChart>
-                                </ResponsiveContainer>
-                             </div>
+                             {data.assessmentCompleted && data.radarData ? (
+                               <div className="h-[250px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.radarData}>
+                                          <PolarGrid stroke="#e2e8f0" />
+                                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} />
+                                          <Radar
+                                              name="Competency"
+                                              dataKey="A"
+                                              stroke="#3b82f6"
+                                              fill="#3b82f6"
+                                              fillOpacity={0.4}
+                                          />
+                                      </RadarChart>
+                                  </ResponsiveContainer>
+                               </div>
+                             ) : (
+                               <div className="flex flex-col items-center justify-center h-[250px] text-center space-y-4">
+                                 <Brain className="h-10 w-10 text-slate-300" />
+                                 <p className="text-sm text-slate-500 font-medium">Complete your Behavioral Assessment<br/>to unlock your competency radar.</p>
+                                 <Button variant="outline" size="sm" onClick={() => window.location.href='/employee/assessments'}>
+                                   Start Assessment
+                                 </Button>
+                               </div>
+                             )}
                         </div>
                     </div>
                 </CardContent>

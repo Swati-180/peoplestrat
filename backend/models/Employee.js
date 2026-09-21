@@ -11,6 +11,7 @@ const employeeSchema = new mongoose.Schema({
   department: String,
   position: String,
   band: { type: String, enum: BANDS },
+  status: { type: String, enum: ['Active', 'Terminated'], default: 'Active' },
   process_area: { type: String, enum: PROCESS_AREAS, index: true },
   sub_process: { type: String }, // e.g., Invoice Posting, SAP Support
   salary: Number,

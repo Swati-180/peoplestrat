@@ -79,6 +79,7 @@ export const uploadJD = async (req, res) => {
     const parsedData = parseJD(req.file.buffer, req.file.originalname);
 
     const jd = new JobDescription({
+      organizationId: req.organizationId,
       jdId: `JD_${Date.now()}`,
       title: parsedData.title,
       department: parsedData.department,
@@ -112,6 +113,7 @@ export const uploadCV = async (req, res) => {
     const parsedData = parseCV(req.file.buffer, req.file.originalname);
 
     const cv = new cvUploads({
+      organizationId: req.organizationId,
       candidateName: parsedData.candidateName,
       email: parsedData.email,
       skills: parsedData.skills,
@@ -146,6 +148,7 @@ export const uploadActivity = async (req, res) => {
     const savedActivities = await ActivityUpload.insertMany(
       activities.map(activity => ({
         ...activity,
+        organizationId: req.organizationId,
         uploadedBy: req.user?.id
       }))
     );
@@ -356,9 +359,9 @@ export const uploadEmployeeData = async (req, res) => {
 // Get upload stats
 export const getUploadStats = async (req, res) => {
   try {
-    const jdCount = await JobDescription.countDocuments();
-    const cvCount = await cvUploads.countDocuments();
-    const activityCount = await ActivityUpload.countDocuments();
+    const jdCount = await JobDescription.countDocuments({ organizationId: req.organizationId });
+    const cvCount = await cvUploads.countDocuments({ organizationId: req.organizationId });
+    const activityCount = await ActivityUpload.countDocuments({ organizationId: req.organizationId });
     const employeeCount = await Employee.countDocuments({ organizationId: req.organizationId });
 
     const stats = [

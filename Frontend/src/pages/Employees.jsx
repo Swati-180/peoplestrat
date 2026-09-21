@@ -51,7 +51,7 @@ export default function Employees() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [selectedAtRiskEmployee, setSelectedAtRiskEmployee] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ department: "", risk: "", fitmentMin: "", fitmentMax: "" });
+  const [filters, setFilters] = useState({ department: "", risk: "", fitmentMin: "", fitmentMax: "", status: "Active" });
   const [showAll, setShowAll] = useState(false);
   const { toast } = useToast();
   const [sortConfig, setSortConfig] = useState({ key: null, dir: "asc" });
@@ -70,6 +70,7 @@ export default function Employees() {
           risk: filters.risk,
           fitmentMin: filters.fitmentMin,
           fitmentMax: filters.fitmentMax,
+          status: filters.status,
           sortBy: sortConfig.key || '',
           sortDir: sortConfig.dir
         });
@@ -296,7 +297,19 @@ export default function Employees() {
               <h3 className="text-lg font-semibold text-[#0F172A]">Filters</h3>
               <Button variant="ghost" onClick={() => setShowFilters(false)}>×</Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#64748B] mb-2">Status</label>
+                <select
+                  className="w-full p-2 border border-[#E5E7EB] rounded-md"
+                  value={filters.status}
+                  onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setCurrentPage(1); }}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Terminated">Terminated</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-[#64748B] mb-2">Department</label>
                 <select
@@ -349,7 +362,7 @@ export default function Employees() {
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <Button onClick={() => { setFilters({ department: "", risk: "", fitmentMin: "", fitmentMax: "" }); setCurrentPage(1); }}>
+              <Button onClick={() => { setFilters({ department: "", risk: "", fitmentMin: "", fitmentMax: "", status: "Active" }); setCurrentPage(1); }}>
                 Clear Filters
               </Button>
               <Button variant="outline" onClick={() => setShowFilters(false)}>

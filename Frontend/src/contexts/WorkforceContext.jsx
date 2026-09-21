@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { api } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -10,12 +10,22 @@ export function WorkforceProvider({ children }) {
   const { activeOrganizationId, isLoading: orgLoading } = useOrganization();
   const [employees, setEmployees] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const latestRequestRef = useRef(null);
 
   const fetchEmployees = () => {
     if (user && activeOrganizationId) {
+      const reqOrgId = activeOrganizationId;
+      latestRequestRef.current = reqOrgId;
+      
+      setEmployees([]);
       setIsLoading(true);
       api.get('/employees?limit=all')
         .then(response => {
+          if (latestRequestRef.current !== reqOrgId) {
+            console.warn('Discarding stale workforce response due to organization switch.');
+            return;
+          }
+
           const data = response.data?.success ? response.data.data : (Array.isArray(response.data) ? response.data : []);
           // Format strict backend models to adapt to frontend UI specs
           const formatted = data.map(emp => ({
@@ -41,6 +51,7 @@ export function WorkforceProvider({ children }) {
           setIsLoading(false);
         })
         .catch(err => {
+          if (latestRequestRef.current !== reqOrgId) return;
           console.error("Failed to load workforce", err);
           setEmployees([]);
           setIsLoading(false);

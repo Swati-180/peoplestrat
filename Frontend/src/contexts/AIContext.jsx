@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { useWorkforceData } from "./WorkforceContext.jsx";
+import { useOrganization } from "./OrganizationContext.jsx";
 import { chatWithAI } from "@/services/api";
 
 // AI Context for managing chat state across the app
@@ -18,6 +19,13 @@ export const AIProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const { employees: centralEmployees, getOverallRisk } = useWorkforceData();
+  const { activeOrganizationId } = useOrganization();
+
+  // Clear chat when organization changes
+  useEffect(() => {
+    setMessages([]);
+    setChatHistory([]);
+  }, [activeOrganizationId]);
 
   // Comprehensive Workforce Data Engine - Derived from Central Data
   const workforceData = useMemo(() => {
@@ -58,9 +66,16 @@ export const AIProvider = ({ children }) => {
   const sendMessage = async (message, mode = 'workforce') => {
     setIsLoading(true);
     console.log(`Sending AI message in mode: ${mode}`);
+    const reqOrgId = activeOrganizationId;
 
     try {
       const response = await chatWithAI(message, mode);
+      
+      if (reqOrgId !== activeOrganizationId) {
+        console.warn('AI response discarded due to organization switch.');
+        return;
+      }
+
       const aiReply = response.data.data.reply;
       const isFallback = response.data.data.isFallback;
 
@@ -106,6 +121,7 @@ export const AIProvider = ({ children }) => {
 
   const clearChat = () => {
     setMessages([]);
+    setChatHistory([]);
   };
 
   const value = {
