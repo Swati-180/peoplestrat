@@ -149,13 +149,13 @@ export const login = async (req, res) => {
 // =====================
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-
-    if (!user) {
+    // req.user is securely attached by the protect middleware.
+    // It has already been fetched and validated via User.findById with select('-password')
+    if (!req.user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(user);
+    res.json(req.user);
 
   } catch (err) {
     console.error(err);
@@ -170,8 +170,8 @@ export const getMe = async (req, res) => {
 export const getMyOrganizations = async (req, res) => {
   try {
     const memberships = await OrganizationMembership.find({ 
-      userId: req.user.id, 
-      status: 'active' 
+      userId: req.user._id,
+      status: 'active'
     }).populate('organizationId');
 
     res.json({
