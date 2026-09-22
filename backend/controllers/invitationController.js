@@ -7,7 +7,7 @@ import { sendInvitationEmail } from '../services/emailService.js';
 export const inviteUser = async (req, res) => {
   try {
     const { email, role } = req.body;
-    const inviterRole = req.user.role.toLowerCase();
+    const inviterRole = (req.organizationRole || req.user.role).toLowerCase();
 
     // Permissions check
     if (inviterRole === 'manager' && role !== 'employee') {
@@ -111,7 +111,7 @@ export const validateToken = async (req, res) => {
 
 export const getInvitations = async (req, res) => {
   try {
-    const userRole = req.user.role.toLowerCase();
+    const userRole = (req.organizationRole || req.user.role).toLowerCase();
     let query = {};
     if (req.organizationId) query.organizationId = req.organizationId;
     
@@ -140,7 +140,7 @@ export const cancelInvitation = async (req, res) => {
     }
     
     // Check permissions
-    if (req.user.role.toLowerCase() === 'manager' && invitation.invitedBy.toString() !== req.user._id.toString()) {
+    if ((req.organizationRole || req.user.role).toLowerCase() === 'manager' && invitation.invitedBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'You can only cancel invitations you sent.' });
     }
     
@@ -164,7 +164,7 @@ export const resendInvitation = async (req, res) => {
     }
     
     // Check permissions
-    if (req.user.role.toLowerCase() === 'manager' && oldInvitation.invitedBy.toString() !== req.user._id.toString()) {
+    if ((req.organizationRole || req.user.role).toLowerCase() === 'manager' && oldInvitation.invitedBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'You can only resend invitations you sent.' });
     }
 
