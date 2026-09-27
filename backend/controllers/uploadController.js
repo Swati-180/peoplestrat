@@ -10,7 +10,16 @@ import { runAnalysis } from './analysisController.js';
 import { PassThrough } from 'stream';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+const pdfLib = require('pdf-parse');
+const pdf = async (buffer) => {
+  if (typeof pdfLib === 'function') {
+    return await pdfLib(buffer);
+  } else if (pdfLib.PDFParse) {
+    const instance = new pdfLib.PDFParse(new Uint8Array(buffer));
+    return await instance.getText();
+  }
+  throw new Error('Unsupported pdf-parse version');
+};
 import bcrypt from 'bcryptjs';
 import Groq from 'groq-sdk';
 
@@ -408,7 +417,7 @@ export const extractResumeData = async (req, res) => {
             { role: "system", content: "Extract technical and soft skills (as an array of strings) and total years of experience (as a number) from the following resume text. Respond ONLY with a valid JSON object with keys 'skills' and 'experience_years'." },
             { role: "user", content: text.substring(0, 4000) } // Send first 4k chars to avoid token limits
           ],
-          model: "llama3-8b-8192",
+          model: "openai/gpt-oss-120b",
           temperature: 0,
         });
 

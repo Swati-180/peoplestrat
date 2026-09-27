@@ -26,7 +26,26 @@ export default function Settings() {
   if (!employees) return <div className="flex items-center justify-center min-h-screen">Loading system data...</div>;
 
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("map");
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tab") || "map";
+  });
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab && tab !== activeTab) {
+        setActiveTab(tab);
+      }
+    };
+    
+    // Check initially and listen for popstate (wouter navigations)
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, [activeTab]);
+
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [targetUnit, setTargetUnit] = useState("");
   const [teamIdentifier, setTeamIdentifier] = useState("");
@@ -521,6 +540,16 @@ function EmployeeSettings({ user }) {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.substring(1);
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, []);
+
   // Validation Logic
   const validatePassword = () => {
     const errs = {};
@@ -630,7 +659,7 @@ function EmployeeSettings({ user }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Section 1: Profile Settings */}
-          <Card>
+          <Card id="profile-settings">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
                 <UserCircle className="h-5 w-5 text-primary" />
@@ -680,7 +709,7 @@ function EmployeeSettings({ user }) {
           </Card>
 
           {/* Section 2: Password Change */}
-          <Card>
+          <Card id="password-settings">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
                 <Shield className="h-5 w-5 text-primary" />
@@ -795,7 +824,7 @@ function EmployeeSettings({ user }) {
           </Card>
 
           {/* Section 3: Notification Preferences */}
-          <Card>
+          <Card id="notification-settings">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
                 <Bell className="h-5 w-5 text-primary" />

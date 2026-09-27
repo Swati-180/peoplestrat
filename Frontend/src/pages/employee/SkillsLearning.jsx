@@ -15,6 +15,7 @@ export default function SkillsLearning() {
   const { toast } = useToast();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const load = async () => {
@@ -22,6 +23,7 @@ export default function SkillsLearning() {
         const res = await api.get("/employee/me/skills");
         if (res.data.success) {
           setData(res.data.data);
+          setCurrentPage(1); // Reset page on new data
         }
       } catch (err) {
         toast({ title: "Error", description: "Could not load skills data.", variant: "destructive" });
@@ -59,6 +61,11 @@ export default function SkillsLearning() {
   const skillGaps = data.skillGaps || [];
   const recommendations = data.recommendations || [];
 
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(currentSkills.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const visibleSkills = currentSkills.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       {/* Header */}
@@ -90,8 +97,8 @@ export default function SkillsLearning() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Skill Matrix */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        {/* Left Column: Skill Matrix */}
         <Card className="shadow-md border-none ring-1 ring-slate-100 overflow-hidden">
           <CardHeader className="bg-slate-50/50 border-b border-slate-100">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -100,8 +107,8 @@ export default function SkillsLearning() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="space-y-6">
-              {currentSkills.map((skill) => (
+            <div className="space-y-6 min-h-[300px]">
+              {visibleSkills.map((skill) => (
                 <div key={skill.name} className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-slate-700">{skill.name}</span>
@@ -118,11 +125,38 @@ export default function SkillsLearning() {
                 </div>
               ))}
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 mt-6 border-t border-slate-100">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="text-xs"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-semibold text-slate-500">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="text-xs"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Gap Analysis */}
-        <Card className="shadow-md border-none ring-1 ring-slate-100 bg-gradient-to-br from-white to-slate-50/50">
+        {/* Right Column: Gap Analysis & Recommendations */}
+        <div className="space-y-8">
+          <Card className="shadow-md border-none ring-1 ring-slate-100 bg-gradient-to-br from-white to-slate-50/50">
           <CardHeader>
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <Target className="h-5 w-5 text-red-500" />
@@ -167,16 +201,16 @@ export default function SkillsLearning() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Recommendations */}
-      <h2 className="text-2xl font-extrabold text-slate-800 flex items-center gap-2 px-1">
-        <Sparkles className="h-6 w-6 text-amber-500" />
-        AI Learning Recommendations
-      </h2>
+        {/* Recommendations */}
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-800 flex items-center gap-2 px-1 mb-6">
+            <Sparkles className="h-6 w-6 text-amber-500" />
+            AI Learning Recommendations
+          </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {recommendations.map((rec, i) => (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {recommendations.map((rec, i) => (
           <Card key={i} className="hover:shadow-xl transition-all duration-300 border-none ring-1 ring-slate-100 overflow-hidden group">
             <div className="h-2 bg-blue-600 w-full" />
             <CardContent className="p-6">
@@ -196,14 +230,21 @@ export default function SkillsLearning() {
                 <span className="flex items-center gap-1"><Clock size={12} /> {rec.duration}</span>
               </div>
               
-              <Button variant="ghost" className="w-full mt-4 group-hover:bg-blue-600 group-hover:text-white transition-all rounded-xl text-blue-600 font-bold">
+              <Button 
+                variant="ghost" 
+                className="w-full mt-4 group-hover:bg-blue-600 group-hover:text-white transition-all rounded-xl text-blue-600 font-bold"
+                onClick={() => toast({ title: "Not Available", description: "No learning provider URL is present in the recommendation data.", variant: "destructive" })}
+              >
                 Start Learning <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
         ))}
+          </div>
+        </div>
       </div>
     </div>
+  </div>
   );
 }
 

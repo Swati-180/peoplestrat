@@ -130,6 +130,13 @@ const seedDatabase = async () => {
       console.log('MongoDB Connected for Real Data Seeding...');
     }
 
+    try {
+      await mongoose.connection.collection('employees').dropIndex('email_1');
+      console.log('✓ Dropped legacy email index.');
+    } catch (e) {
+      // ignore if doesn't exist
+    }
+
     // Clear all collections
     await Promise.all([
       User.deleteMany({}),
@@ -140,6 +147,7 @@ const seedDatabase = async () => {
       PeerFeedback.deleteMany({}),
       JobDescription.deleteMany({}),
       Organization.deleteMany({}),
+      OrganizationMembership.deleteMany({}),
     ]);
     console.log('✓ Cleared existing data.');
 
@@ -273,6 +281,13 @@ const seedDatabase = async () => {
         email,
         password: hashedPassword,
         role: 'employee',
+      });
+
+      await OrganizationMembership.create({
+        organizationId: demoOrg._id,
+        userId: user._id,
+        role: 'employee',
+        status: 'active'
       });
 
       // Map career profile

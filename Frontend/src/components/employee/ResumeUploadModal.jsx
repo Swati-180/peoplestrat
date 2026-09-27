@@ -35,7 +35,7 @@ export default function ResumeUploadModal({ isOpen, onClose, onSuccess }) {
     formData.append('file', file);
     
     try {
-      const res = await api.post('/upload/resume/extract', formData, {
+      const res = await api.post('/uploads/resume/extract', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -56,7 +56,7 @@ export default function ResumeUploadModal({ isOpen, onClose, onSuccess }) {
   const handleVerify = async () => {
     setIsSaving(true);
     try {
-      const res = await api.post('/upload/resume/verify', {
+      const res = await api.post('/uploads/resume/verify', {
         skills: extractedData.skills,
         experience_years: extractedData.experience_years
       });

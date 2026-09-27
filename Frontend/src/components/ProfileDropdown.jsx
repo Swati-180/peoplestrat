@@ -39,14 +39,53 @@ export function ProfileDropdown({ user }) {
   }, []);
 
   const menuItems = [
-    { label: "View Full Profile", icon: User, action: () => navigate("/settings"), id: "profile" },
-    { label: "Account Settings", icon: Settings, action: () => navigate("/settings"), id: "account" },
-    { label: "Preferences & Notifications", icon: Bell, action: () => navigate("/settings"), id: "prefs" },
-    { label: "Change Password", icon: Lock, action: () => navigate("/settings"), id: "password" },
+    { 
+      label: "View Full Profile", 
+      icon: User, 
+      action: () => { navigate("/employee/profile"); setIsOpen(false); }, 
+      id: "profile" 
+    },
+    { 
+      label: "Account Settings", 
+      icon: Settings, 
+      action: () => { navigate("/settings?tab=profile"); setIsOpen(false); }, 
+      id: "account" 
+    },
+    { 
+      label: "Preferences & Notifications", 
+      icon: Bell, 
+      action: () => { 
+        navigate("/settings?tab=profile#notification-settings"); 
+        setTimeout(() => document.getElementById('notification-settings')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        setIsOpen(false);
+      }, 
+      id: "prefs" 
+    },
+    { 
+      label: "Change Password", 
+      icon: Lock, 
+      action: () => { 
+        navigate("/settings?tab=profile#password-settings"); 
+        setTimeout(() => document.getElementById('password-settings')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        setIsOpen(false);
+      }, 
+      id: "password" 
+    },
     null, // divider
-    { label: "Help & Support", icon: HelpCircle, action: () => navigate("/documentation"), id: "help" },
+    { 
+      label: "Help & Support", 
+      icon: HelpCircle, 
+      action: () => { navigate("/documentation"); setIsOpen(false); }, 
+      id: "help" 
+    },
     null, // divider
-    { label: "Logout", icon: LogOut, action: async () => { await logout(); navigate("/login"); }, id: "logout", danger: true },
+    { 
+      label: "Logout", 
+      icon: LogOut, 
+      action: async () => { await logout(); navigate("/login"); setIsOpen(false); }, 
+      id: "logout", 
+      danger: true 
+    },
   ];
 
   const actionableItems = menuItems.filter(Boolean);

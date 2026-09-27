@@ -14,6 +14,14 @@ export function OrganizationProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [prevUserId, setPrevUserId] = useState(null);
+  if ((user?.id || user?._id || null) !== prevUserId) {
+    setPrevUserId(user?.id || user?._id || null);
+    if (user) {
+      setIsLoading(true);
+    }
+  }
+
   useEffect(() => {
     let isMounted = true;
 

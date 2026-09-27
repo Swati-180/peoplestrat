@@ -5,38 +5,36 @@ import fs from 'fs';
 
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGO_URI;
-
-    // try to use real Mongo if URI provided
-    if (mongoURI) {
-      try {
-        await mongoose.connect(mongoURI, {
-          serverSelectionTimeoutMS: 5000 // fail fast if cannot connect
-        });
-        console.log(`[DATABASE] SUCCESS: Connected to persistent MongoDB at ${mongoURI}`);
-        return;
-      } catch (err) {
-        console.warn(`[DATABASE] WARNING: Failed to connect to persistent MongoDB at ${mongoURI}: ${err.message}`);
-        if (process.env.NODE_ENV === 'production') {
-          console.error('[DATABASE] FATAL: In production the DB connection is required. Exiting.');
-          process.exit(1);
-        }
-        console.warn('[DATABASE] NOTICE: Falling back to ephemeral in-memory MongoDB because persistent DB is unavailable.');
-        // otherwise fall through to in-memory fallback
+    // Only use MongoMemoryServer for automated tests
+    if (process.env.NODE_ENV === 'test') {
+      console.log('[DATABASE] Spinning up a zero-config ephemeral in-memory MongoDB for tests...');
+      const mongod = await MongoMemoryServer.create();
+      const uri = mongod.getUri();
+      await mongoose.connect(uri);
+      console.log(`[DATABASE] READY: Ephemeral In-Memory MongoDB Connected at ${uri}.`);
+      process.env.CURRENT_DB_URI = uri;
+      if (fs.existsSync('../')) {
+        fs.writeFileSync('../mongo_uri.txt', uri);
       }
+      return;
     }
 
-    // No URI provided or connection failed -> spin up in-memory instance
-    console.log('[DATABASE] Spinning up a zero-config ephemeral in-memory MongoDB for local dev...');
-    const mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const mongoURI = process.env.MONGO_URI;
+    if (!mongoURI) {
+      console.error('[DATABASE] FATAL: MONGO_URI environment variable is missing.');
+      process.exit(1);
+    }
 
-    await mongoose.connect(uri);
-    console.log(`[DATABASE] READY: Ephemeral In-Memory MongoDB Connected at ${uri}. NOTE: Data will be lost on restart.`);
-    // expose URI for debugging other processes
-    process.env.CURRENT_DB_URI = uri;
-    fs.writeFileSync('../mongo_uri.txt', uri);
-
+    // Try to connect to real Mongo
+    try {
+      await mongoose.connect(mongoURI, {
+        serverSelectionTimeoutMS: 5000 // fail fast if cannot connect
+      });
+      console.log(`[DATABASE] SUCCESS: Connected to persistent MongoDB at ${mongoURI}`);
+    } catch (err) {
+      console.error(`[DATABASE] FATAL: Failed to connect to persistent MongoDB at ${mongoURI}. Error: ${err.message}`);
+      process.exit(1);
+    }
   } catch (err) {
     console.error('[DATABASE] FATAL: Database Initialization failed:', err.message);
     process.exit(1);

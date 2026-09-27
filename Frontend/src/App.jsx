@@ -66,16 +66,17 @@ import ResumeBuilder from "./pages/employee/ResumeBuilder.jsx";
 /* ---------------- PROTECTED ROUTES ---------------- */
 
 function ProtectedRoute({ component: Component }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: orgLoading } = useOrganization();
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!authLoading && !user) {
       navigate("/login");
     }
-  }, [isLoading, user]);
+  }, [authLoading, user, navigate]);
 
-  if (isLoading) {
+  if (authLoading || orgLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -258,10 +259,10 @@ function AppContent() {
 
   return (
     <SidebarProvider style={{ "--sidebar-width": "16rem" }}>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen print:h-auto w-full">
         <AppSidebar />
 
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden print:overflow-visible">
           {/* Header */}
           <header className="flex items-center justify-between px-6 py-2.5 border-b border-sidebar-border bg-sidebar text-sidebar-foreground sticky top-0 z-40 shadow-sm">
             <div className="flex items-center gap-4">
@@ -301,7 +302,7 @@ function AppContent() {
 
 
           {/* Page */}
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto print:overflow-visible p-6">
             <AppRouter />
           </main>
         </div>

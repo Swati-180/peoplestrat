@@ -76,8 +76,8 @@ export default function CareerGrowth() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 print:grid-cols-3 gap-8 print:gap-4">
+        <div className="lg:col-span-2 print:col-span-2 space-y-8 print:space-y-4">
             {/* Employee Overview Card (Visible in PDF) */}
             <Card className="border-none shadow-sm bg-white p-6 border-l-4 border-l-blue-600">
                 <div className="flex flex-wrap gap-8 items-center">
@@ -125,12 +125,12 @@ export default function CareerGrowth() {
                     Standard Career Pathway
                 </CardTitle>
                 </CardHeader>
-                <CardContent className="px-8 py-10">
-                <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-12 md:gap-4">
-                    <div className="absolute top-4 md:top-1/2 left-4 md:left-0 w-1 md:w-full h-full md:h-1 bg-slate-100 -translate-y-1/2 hidden md:block" />
+                <CardContent className="px-8 py-10 print:py-4">
+                <div className="relative flex flex-col md:flex-row print:flex-row justify-between items-start md:items-center print:items-center gap-12 md:gap-4 print:gap-4">
+                    <div className="absolute top-4 md:top-1/2 print:top-1/2 left-4 md:left-0 print:left-0 w-1 md:w-full print:w-full h-full md:h-1 print:h-1 bg-slate-100 -translate-y-1/2 hidden md:block print:block" />
                     
                     {data.careerPath.map((step, i) => (
-                    <div key={i} className="relative z-10 flex flex-row md:flex-col items-center gap-4 md:gap-3 text-center w-full md:w-auto">
+                    <div key={i} className="relative z-10 flex flex-row md:flex-col print:flex-col items-center gap-4 md:gap-3 print:gap-2 text-center w-full md:w-auto print:w-auto">
                         <div className={`h-10 w-10 rounded-2xl shadow-md flex items-center justify-center border-4 border-white transition-all transform hover:scale-110 ${
                         step.status === 'completed' ? 'bg-emerald-500 text-white' : 
                         step.status === 'current' ? 'bg-blue-600 text-white ring-4 ring-blue-50' : 
@@ -203,7 +203,7 @@ export default function CareerGrowth() {
                                <div className="flex flex-col items-center justify-center h-[250px] text-center space-y-4">
                                  <Brain className="h-10 w-10 text-slate-300" />
                                  <p className="text-sm text-slate-500 font-medium">Complete your Behavioral Assessment<br/>to unlock your competency radar.</p>
-                                 <Button variant="outline" size="sm" onClick={() => window.location.href='/employee/assessments'}>
+                                 <Button variant="outline" size="sm" onClick={() => window.location.href='/employee/behavior-assessment'}>
                                    Start Assessment
                                  </Button>
                                </div>
@@ -214,8 +214,8 @@ export default function CareerGrowth() {
             </Card>
         </div>
 
-        <div className="space-y-8">
-            <div className="bg-white p-6 rounded-3xl shadow-xl shadow-indigo-50 border border-indigo-50 flex items-center gap-4">
+        <div className="space-y-8 print:space-y-4">
+            <div className="bg-white p-6 print:p-4 rounded-3xl shadow-xl shadow-indigo-50 border border-indigo-50 flex items-center gap-4">
                 <div className="p-3 bg-indigo-500 rounded-2xl text-white shadow-lg shadow-indigo-200">
                     <Rocket size={24} />
                 </div>

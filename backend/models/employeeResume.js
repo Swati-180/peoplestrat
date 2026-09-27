@@ -29,6 +29,7 @@ const ProjectSchema = new Schema({
 
 const ResumeSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
   rawText: { type: String }, // full parsed text
   education: [EducationSchema],
   experience: [ExperienceSchema],
@@ -37,7 +38,15 @@ const ResumeSchema = new Schema({
   summary: String,
   parsedAt: { type: Date, default: Date.now },
   rawJson: { type: Schema.Types.Mixed } // store original parsed structure
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
+
+ResumeSchema.index(
+  { userId: 1, organizationId: 1 },
+  { 
+    unique: true,
+    partialFilterExpression: { organizationId: { $type: 'objectId' } }
+  }
+);
 
 export default mongoose.model('EmployeeResume', ResumeSchema);
 
