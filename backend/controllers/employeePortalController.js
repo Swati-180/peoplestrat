@@ -3,6 +3,7 @@ import AnalysisResult from '../models/AnalysisResult.js';
 import PerformanceRecord from '../models/PerformanceRecord.js';
 import BehavioralResult from '../models/BehavioralResult.js';
 import PulseCheck from '../models/PulseCheck.js';
+import EmployeeResume from '../models/employeeResume.js';
 
 // Helper: find employee by logged-in user's email
 const findMyEmployee = async (req) => {
@@ -53,6 +54,57 @@ export const updateMyProfile = async (req, res) => {
     
     const behavioral = await BehavioralResult.findOne({ employeeId: emp._id, organizationId: req.organizationId });
     res.json({ success: true, data: addScores(emp, !!behavioral) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// GET /api/employee/me/resume — get own resume
+export const getMyResume = async (req, res) => {
+  try {
+    const emp = await findMyEmployee(req);
+    if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
+
+    let resume = await EmployeeResume.findOne({ userId: req.user._id, organizationId: req.organizationId });
+    
+    // Return empty structure instead of fake content if no resume exists
+    if (!resume) {
+      resume = {
+        education: [],
+        experience: [],
+        projects: [],
+        skills: [],
+        summary: ''
+      };
+    }
+
+    res.json({ success: true, data: resume });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// PUT /api/employee/me/resume — update own resume
+export const updateMyResume = async (req, res) => {
+  try {
+    const emp = await findMyEmployee(req);
+    if (!emp) return res.status(404).json({ success: false, error: 'Employee record not found.' });
+
+    let resume = await EmployeeResume.findOne({ userId: req.user._id, organizationId: req.organizationId });
+    
+    if (!resume) {
+      resume = new EmployeeResume({ userId: req.user._id, organizationId: req.organizationId });
+    }
+
+    // Only allow specific fields to be updated
+    const allowed = ['summary', 'education', 'experience', 'projects', 'skills'];
+    allowed.forEach(field => {
+      if (req.body[field] !== undefined) resume[field] = req.body[field];
+    });
+    
+    await resume.save();
+
+    res.json({ success: true, data: resume });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -389,6 +441,16 @@ export const submitPulseCheck = async (req, res) => {
     // 5. Update Employee record so Manager Portal sees it
     emp.fatigueScore = fatigueScore;
     await emp.save();
+
+    let riskLevel = 'Healthy';
+    let recommendation = 'Your workload balance looks healthy. Keep it up!';
+    if (fatigueScore >= 75) {
+      riskLevel = 'Burnout Risk';
+      recommendation = 'High workload detected. Consider taking recovery time.';
+    } else if (fatigueScore >= 50) {
+      riskLevel = 'Moderate Fatigue';
+      recommendation = 'Moderate fatigue detected. Discuss workload prioritization with your manager.';
+    }
 
     res.json({
       success: true,

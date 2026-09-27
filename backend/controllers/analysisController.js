@@ -615,7 +615,7 @@ Respond ONLY with a valid JSON object in this exact format:
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: 'llama3-8b-8192',
+      model: 'openai/gpt-oss-120b',
       temperature: 0.5,
       response_format: { type: 'json_object' }
     });
