@@ -18,7 +18,7 @@ const RESULTS_NOTE_MS = 5 * 60 * 1000;
 const QUIZ_RESULT_CHECK_DELAYS_MS = [1000, 5000, 10000, 30000];
 
 // window.MayamayaQuiz is provided by /js/mayamaya-quiz.min.js (see public/js/).
-// launchQuiz({ getQuizLink, onClose, onError }) → window (popup)
+// mountQuiz({ el, getQuizLink, onComplete, onClose, onError }) → { iframe, destroy }
 
 function getRemainingCooldown(completedAt) {
   if (!completedAt) return 0;
@@ -111,7 +111,7 @@ export default function BehaviorAssessment() {
   const handleStartQuiz = async () => {
     setMountError(null);
     if (getRemainingCooldown(quizSummary?.completedAt) > 0) return;
-    if (!window.MayamayaQuiz?.launchQuiz) {
+    if (!window.MayamayaQuiz?.mountQuiz) {
       setMountError('Assessment player is still loading. Please wait a moment and try again.');
       return;
     }
@@ -150,22 +150,33 @@ export default function BehaviorAssessment() {
     handlersRef.current = { fetchSummary, refetchWithDelays, toast };
   });
 
-  // Launch the MayaMaya popup whenever a quizLink is active.
+  // Mount the MayaMaya iframe whenever a quizLink is active. useEffect (not a
+  // callback ref) so React 18 StrictMode teardown runs mounted.destroy()
+  // correctly instead of leaking duplicate SDK instances.
   useEffect(() => {
-    if (!quizLink) return;
-    if (!window.MayamayaQuiz?.launchQuiz) {
+    const node = mountRef.current;
+    if (!node || !quizLink) return;
+    if (!window.MayamayaQuiz?.mountQuiz) {
       setMountError('Assessment player failed to load.');
       return;
     }
-    let popupWindow;
+    let mounted;
     try {
-      popupWindow = window.MayamayaQuiz.launchQuiz({
+      mounted = window.MayamayaQuiz.mountQuiz({
+        el: node,
         getQuizLink: async () => quizLink,
-        onClose: () => {
-          // Popup closed, either because user finished or abandoned.
-          // Trigger a summary fetch and staggered webhook checks.
+        onComplete: () => {
+          try {
+            sessionStorage.setItem('peoplestrat_quiz_submitted_at', String(Date.now()));
+          } catch {
+            /* sessionStorage unavailable — non-fatal */
+          }
+          handlersRef.current.toast({ title: 'Assessment Submitted', description: 'Your results will appear here shortly.' });
           handlersRef.current.fetchSummary();
           handlersRef.current.refetchWithDelays();
+        },
+        onClose: () => {
+          handlersRef.current.fetchSummary();
           setQuizLink(null);
         },
         onError: (e) => {
@@ -173,23 +184,14 @@ export default function BehaviorAssessment() {
           setMountError(message);
           setQuizLink(null);
         },
-        onPopupBlocked: () => {
-          setMountError('Please allow popups to take the assessment.');
-          setQuizLink(null);
-        }
       });
     } catch (e) {
-      setMountError(e?.message || 'Failed to launch the assessment player.');
-      setQuizLink(null);
+      setMountError(e?.message || 'Failed to mount the assessment player.');
       return;
     }
-
     return () => {
-      // Cleanup if the component unmounts while quiz is open
       try {
-        if (popupWindow && !popupWindow.closed) {
-          popupWindow.close();
-        }
+        mounted?.destroy();
       } catch {
         /* ignore teardown errors */
       }
@@ -213,7 +215,7 @@ export default function BehaviorAssessment() {
     );
   }
 
-  // ── Active quiz (popup launched) ─────────────────────────────────────
+  // ── Active quiz (iframe mounted) ─────────────────────────────────────
   if (quizLink) {
     return (
       <div className="max-w-3xl mx-auto py-8">
@@ -223,10 +225,10 @@ export default function BehaviorAssessment() {
               <BrainCircuit className="h-8 w-8 text-indigo-600" />
               Behavioral Assessment
             </h1>
-            <p className="text-muted-foreground mt-2">The assessment has opened in a new popup window. Please complete it there.</p>
+            <p className="text-muted-foreground mt-2">Complete the assessment below. It closes automatically when done.</p>
           </div>
           <Button variant="outline" onClick={handleCancelQuiz} className="gap-2 shrink-0">
-            <XCircle className="h-4 w-4" /> Cancel
+            <XCircle className="h-4 w-4" /> Exit
           </Button>
         </div>
         {mountError && (
@@ -235,10 +237,7 @@ export default function BehaviorAssessment() {
           </Card>
         )}
         <Card className="shadow-lg border-indigo-100 overflow-hidden">
-          <CardContent className="pt-10 pb-10 text-center">
-            <p className="text-lg font-medium text-slate-700 mb-2">Assessment is active in a popup window.</p>
-            <p className="text-sm text-slate-500">If you closed it by mistake, cancel and start again.</p>
-          </CardContent>
+          <div ref={mountRef} className="min-h-[560px] w-full" />
         </Card>
       </div>
     );
