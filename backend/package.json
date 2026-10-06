@@ -30,7 +30,10 @@
     "multer": "^2.1.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^9.1.0",
+    "pdf-image": "^2.0.0",
     "pdf-parse": "^2.4.5",
+    "pdf.js-extract": "^1.0.1",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

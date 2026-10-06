@@ -1,4 +1,5 @@
 import multer from 'multer';
+import { PDFExtract } from 'pdf.js-extract';
 import csv from 'csv-parser';
 import xlsx from 'xlsx';
 import JobDescription from '../models/jobDescriptions.js';
@@ -206,7 +207,7 @@ const parseEmployeeData = (buffer, filename) => {
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         const results = [];
         let headers = [];
-        
+
         // Basic table detection: look for lines with multiple spaces or tabs
         lines.forEach((line, index) => {
           const parts = line.split(/\s{2,}/); // Split by 2+ spaces
@@ -222,7 +223,7 @@ const parseEmployeeData = (buffer, filename) => {
             }
           }
         });
-        
+
         // Fallback: If no table detected, try to regex extract any "Employee Name: X" etc.
         if (results.length === 0) {
            const names = text.match(/Name:\s*([^\n]+)/gi);
@@ -277,7 +278,7 @@ export const uploadEmployeeData = async (req, res) => {
         const name = emp.name || emp.Name || emp.employee_name || 'New Employee';
         const rawEmail = (emp.email || emp.Email || emp.employee_email || '').trim().toLowerCase();
         const email = rawEmail || `${name.toLowerCase().replace(/\s+/g, '')}@employee.com`;
-        
+
         // Pass1234 hashed
         const defaultPassword = await bcrypt.hash('pass1234', 10);
 
@@ -397,52 +398,165 @@ export const extractResumeData = async (req, res) => {
     if (req.file.mimetype !== 'application/pdf') return res.status(400).json({ success: false, error: 'Only PDF files are supported' });
     if (req.file.size > 5 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File size exceeds 5MB limit' });
 
+
+
     // 1. Extract raw text from PDF
-    const data = await pdf(req.file.buffer);
-    const text = data.text;
-    
-    if (!text || text.trim().length === 0) {
-      return res.status(400).json({ success: false, error: 'Unreadable or empty PDF file' });
+    let text = "";
+    try {
+      const data = await pdf(req.file.buffer);
+      text = data.text || "";
+    } catch (err) {
+      console.log(`pdf-parse failed: ${err.message}`);
     }
 
-    let extractedData = { skills: [], experience_years: 0 };
+    if (text.trim().length < 50) {
+      try {
+        const pdfExtract = new PDFExtract();
+        const data = await new Promise((resolve, reject) => {
+          pdfExtract.extractBuffer(req.file.buffer, {}, (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+          });
+        });
+
+        let fallbackText = "";
+        if (data && data.pages) {
+          data.pages.forEach((page, i) => {
+            fallbackText += `\nPAGE ${i+1} TEXT:\n`;
+            if (page.content) {
+              page.content.forEach(item => {
+                fallbackText += item.str + " ";
+              });
+              fallbackText += "\n";
+            }
+          });
+        }
+        text = fallbackText;
+      } catch (err) {
+        console.log(`pdf.js-extract fallback error:`, err);
+      }
+    }
+
+
+
+    if (!text || text.trim().length < 50) {
+      return res.status(400).json({ success: false, error: 'Unreadable or empty PDF file. Please ensure it contains selectable text.' });
+    }
+
+    let extractedData = {
+      personal: { name: null, email: null, phone: null, location: null, address: null },
+      professional: { currentRole: null, department: null },
+      education: [],
+      workExperience: [],
+      skills: { technical: [], soft: [], tools: [], languages: [] },
+      projects: [],
+      certifications: [],
+      achievements: [],
+      awards: [],
+      publications: [],
+      volunteerExperience: []
+    };
     let usedGroq = false;
 
     // 2. Try Groq AI extraction
     if (process.env.GROQ_API_KEY) {
       try {
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        const promptSchema = `{
+  "personal": {
+    "name": "string|null",
+    "email": "string|null",
+    "phone": "string|null",
+    "location": "string|null",
+    "linkedin": "string|null",
+    "github": "string|null"
+  },
+  "professional": {
+    "currentRole": "string|null",
+    "department": "string|null"
+  },
+  "education": [{ "degree": "string|null", "institution": "string|null", "field": "string|null", "startDate": "string|null", "endDate": "string|null", "grade": "string|null" }],
+  "workExperience": [
+    {
+      "jobTitle": "string|null",
+      "company": "string|null",
+      "location": "string|null",
+      "startDate": "string|null",
+      "endDate": "string|null",
+      "isCurrent": boolean,
+      "description": ["string"],
+      "achievements": ["string"],
+      "technologies": ["string"]
+    }
+  ],
+  "skills": ["string"],
+  "projects": [
+    {
+      "name": "string|null",
+      "description": ["string"],
+      "technologies": ["string"],
+      "role": "string|null"
+    }
+  ],
+  "certifications": ["string"],
+  "achievements": ["string"],
+  "training": ["string"]
+}`;
+        const aiInput = text.substring(0, 5000);
+
+
         const completion = await groq.chat.completions.create({
           messages: [
-            { role: "system", content: "Extract technical and soft skills (as an array of strings) and total years of experience (as a number) from the following resume text. Respond ONLY with a valid JSON object with keys 'skills' and 'experience_years'." },
-            { role: "user", content: text.substring(0, 4000) } // Send first 4k chars to avoid token limits
+            { role: "system", content: `Extract the candidate's complete profile from the resume text. Do not invent information. Use null or empty arrays if missing. Respond ONLY with a valid JSON object matching exactly this structure:\n${promptSchema}` },
+            { role: "user", content: aiInput }
           ],
           model: "openai/gpt-oss-120b",
           temperature: 0,
         });
 
-        const content = completion.choices[0]?.message?.content;
+        let content = completion.choices[0]?.message?.content || "";
+
+
+        content = content.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
         const parsed = JSON.parse(content);
-        
-        if (parsed && Array.isArray(parsed.skills) && typeof parsed.experience_years === 'number') {
-          extractedData = parsed;
+
+        if (parsed && typeof parsed === 'object') {
+          // STEP 2: NO DEMO FALLBACKS. Map exactly what is in parsed.
+
+          // Map workExperience description to responsibilities if frontend modal expects it
+          const mappedWorkExp = (parsed.workExperience || []).map(job => ({
+            ...job,
+            responsibilities: job.description || job.responsibilities || []
+          }));
+
+          // Map skills flat array to object if frontend modal expects it
+          let mappedSkills = parsed.skills || [];
+          if (Array.isArray(mappedSkills)) {
+            mappedSkills = { technical: mappedSkills, soft: [], tools: [], languages: [] };
+          }
+
+          extractedData = {
+            personal: { ...extractedData.personal, ...(parsed.personal || {}) },
+            professional: { ...extractedData.professional, ...(parsed.professional || {}) },
+            education: parsed.education || [],
+            workExperience: mappedWorkExp,
+            skills: mappedSkills,
+            projects: parsed.projects || [],
+            certifications: parsed.certifications || [],
+            achievements: parsed.achievements || [],
+            training: parsed.training || []
+          };
           usedGroq = true;
         }
       } catch (err) {
-        console.error("Groq extraction failed, falling back to deterministic:", err.message);
+        console.error("Groq extraction failed:", err.message);
       }
     }
 
-    // 3. Fallback: Deterministic Regex Extraction
+    // 3. DO NOT use demo strings in fallback. If it fails, return error if strict.
+    // We are NOT falling back to any dummy data.
     if (!usedGroq) {
-      const knownSkills = ['React', 'Node.js', 'JavaScript', 'Python', 'AWS', 'MongoDB', 'SQL', 'Docker', 'Leadership', 'Communication', 'Project Management'];
-      const textUpper = text.toUpperCase();
-      
-      const foundSkills = knownSkills.filter(skill => textUpper.includes(skill.toUpperCase()));
-      extractedData.skills = foundSkills;
-      
-      const expMatch = text.match(/([0-9]+)\+?\s*years?\s*(of)?\s*experience/i);
-      extractedData.experience_years = expMatch ? parseInt(expMatch[1]) : 0;
+      console.log("AI Extraction failed or was not used. Returning default/empty structure without dummy data.");
     }
 
     res.json({
@@ -460,31 +574,103 @@ export const extractResumeData = async (req, res) => {
 // Phase 2: Verify & Save Resume
 export const verifyAndSaveResume = async (req, res) => {
   try {
-    const { skills, experience_years } = req.body;
-    
+    const { personal, professional, education, workExperience, projects, certifications, achievements, skills, experience_years } = req.body;
+
     // Find authenticated employee
     const email = req.user?.email;
     if (!email) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    
+
     const emp = await Employee.findOne({ email, organizationId: req.organizationId });
     if (!emp) return res.status(404).json({ success: false, error: 'Employee not found' });
 
-    // Validate inputs
-    if (skills && Array.isArray(skills)) {
-      // Merge unique skills
+    // Update Personal Info
+    if (personal) {
+      if (personal.name) emp.name = personal.name;
+      if (personal.location) emp.location = personal.location;
+      if (personal.phone) emp.phone = personal.phone;
+    }
+
+    // Update Professional Info & Skills
+    if (professional) {
+      if (professional.currentRole) {
+        emp.currentRole = professional.currentRole;
+        emp.position = professional.currentRole;
+      }
+      if (professional.department) emp.department = professional.department;
+
+      const incomingSkills = professional.skills || [];
+      if (Array.isArray(incomingSkills)) {
+        const currentSkills = emp.skills || [];
+        const newSkills = incomingSkills.filter(s => typeof s === 'string').map(s => s.trim());
+        emp.skills = [...new Set([...currentSkills, ...newSkills])];
+      }
+    }
+
+    // Also support fallback raw skills array
+    if (req.body.skills) {
       const currentSkills = emp.skills || [];
-      const newSkills = skills.filter(s => typeof s === 'string').map(s => s.trim());
+      let newSkills = [];
+
+      if (Array.isArray(req.body.skills)) {
+        newSkills = req.body.skills.filter(s => typeof s === 'string').map(s => s.trim());
+      } else if (typeof req.body.skills === 'object') {
+        const { technical = [], soft = [], tools = [], languages = [] } = req.body.skills;
+        newSkills = [...technical, ...soft, ...tools, ...languages].filter(s => typeof s === 'string').map(s => s.trim());
+      }
+
       emp.skills = [...new Set([...currentSkills, ...newSkills])];
     }
-    
-    if (experience_years !== undefined && typeof experience_years === 'number') {
-      emp.experience_years = experience_years;
+
+    // Update Work Experience
+    if (workExperience && Array.isArray(workExperience)) {
+      emp.workExperience = workExperience.map(w => ({
+        company: w.company,
+        jobTitle: w.role || w.jobTitle,
+        location: w.location,
+        startDate: w.startDate ? new Date(w.startDate) : null,
+        endDate: w.endDate ? new Date(w.endDate) : null,
+        isCurrent: Boolean(w.isCurrent),
+        responsibilities: Array.isArray(w.responsibilities) ? w.responsibilities : [],
+        achievements: Array.isArray(w.achievements) ? w.achievements : [],
+        skills: Array.isArray(w.technologies) ? w.technologies : []
+      }));
     }
-    
+
+    if (education && Array.isArray(education)) {
+      emp.education = education;
+    }
+    if (projects && Array.isArray(projects)) {
+      emp.projects = projects.map(p => ({
+        ...p,
+        description: Array.isArray(p.description) ? p.description.join('\n') : p.description
+      }));
+    }
+    if (certifications && Array.isArray(certifications)) {
+      emp.certifications = certifications;
+    }
+    if (achievements && Array.isArray(achievements)) {
+      emp.achievements = achievements;
+    }
+
+
+
     emp.updatedAt = new Date();
     await emp.save();
 
-    res.json({ success: true, message: 'Profile updated successfully', data: { skills: emp.skills, experience_years: emp.experience_years } });
+
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        name: emp.name,
+        location: emp.location,
+        currentRole: emp.currentRole,
+        skills: emp.skills,
+        experience_years: emp.experience_years,
+        workExperience: emp.workExperience
+      }
+    });
   } catch (error) {
     console.error('Resume verification error:', error);
     res.status(500).json({ success: false, error: 'Failed to save resume data' });

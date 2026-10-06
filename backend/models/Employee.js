@@ -7,6 +7,7 @@ const employeeSchema = new mongoose.Schema({
   userid: { type: String, sparse: true },
   name: { type: String, required: true },
   email: { type: String, required: true, sparse: true },
+  phone: String,
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   department: String,
   position: String,
@@ -40,6 +41,39 @@ const employeeSchema = new mongoose.Schema({
   recommendedRole: String,
   performance: String, // 'High', 'Average', 'Low'
   
+  // Experience history
+  workExperience: [{
+    company: String,
+    jobTitle: String,
+    location: String,
+    startDate: Date,
+    endDate: Date,
+    isCurrent: Boolean,
+    durationMonths: Number,
+    responsibilities: [String],
+    achievements: [String],
+    skills: [String]
+  }],
+
+  education: [{
+    degree: String,
+    institution: String,
+    field: String,
+    startDate: String,
+    endDate: String,
+    grade: String
+  }],
+
+  projects: [{
+    name: String,
+    description: String,
+    technologies: [String],
+    role: String
+  }],
+
+  certifications: [String],
+  achievements: [String],
+
   // Skills (flat array)
   skills: [String],
   
