@@ -40,7 +40,21 @@ if (process.env.FRONTEND_URL) {
 }
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const explicitVercelOrigins = [
+      'https://peoplestrat.vercel.app',
+      'https://peoplestrat-git-main-bswati18000-2691s-projects.vercel.app'
+    ];
+    if (
+      allowedOrigins.includes(origin) ||
+      explicitVercelOrigins.includes(origin)
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 // Preserve rawBody for MayaMaya webhook HMAC verification (mayamaya_plan.md §6).
