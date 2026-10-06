@@ -134,7 +134,9 @@ export const startQuiz = async (req, res) => {
     return res.json({ success: true, data: { ...result, embedOrigin }, ...result, embedOrigin });
   } catch (err) {
     const status = err?.status || (err?.message || '').includes('not configured') ? 500 : 500;
-    console.error('[QUIZ] startQuiz failed:', err?.message || err);
+    // Log the full upstream payload — Maya's body often carries the real reason
+    // behind non-standard statuses like 499.
+    console.error('[QUIZ] startQuiz failed:', err?.message || err, '| upstream status:', err?.status ?? 'n/a', '| body:', JSON.stringify(err?.body)?.slice(0, 500) ?? 'n/a');
     return res.status(status).json({ success: false, error: err?.message || 'Failed to start quiz' });
   }
 };

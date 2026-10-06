@@ -58,10 +58,21 @@ class QuizService {
     // Per-call embedOrigin override (validated by the controller against an
     // allowlist). Falls back to the constructor default from env.
     const { embedOrigin, ...rest } = options || {};
-    return client.initiate(String(userId), {
+    const attempt = client.initiate(String(userId), {
       ...rest,
       ...(embedOrigin ? { embedOrigin } : {}),
     });
+    // Maya's initiate can hang upstream (observed: no response for 60s+ while
+    // verifyKey answers in ~1s). Fail fast instead of holding the HTTP handler.
+    const timeoutMs = Number(process.env.MAYAMAYA_INITIATE_TIMEOUT_MS || 30000);
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => {
+        const err = new Error(`MayaMaya initiate timed out after ${timeoutMs}ms`);
+        err.status = 504;
+        reject(err);
+      }, timeoutMs)
+    );
+    return Promise.race([attempt, timeout]);
   }
 
   handleWebhookEvent(rawBody, headers) {
