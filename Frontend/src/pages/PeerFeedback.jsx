@@ -26,10 +26,10 @@ export default function PeerFeedback() {
 
   return (
     <div className="p-8 bg-[#FAFAFA] min-h-screen">
-      <PageHeader 
+      <PageHeader
         title={
           <span className="flex items-center gap-3">
-            <MessageSquare className="w-8 h-8 text-blue-600" /> 
+            <MessageSquare className="w-8 h-8 text-blue-600" />
             Peer Feedback
           </span>
         }
@@ -119,7 +119,6 @@ function ManagerView() {
   const { employees, isLoading } = useWorkforceData();
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState("overview");
 
   const tableData = useMemo(() => {
     if (!employees) return [];
@@ -140,9 +139,9 @@ function ManagerView() {
     { header: "Employee", accessorKey: "name", className: "font-medium" },
     { header: "Department", accessorKey: "department", className: "text-gray-500" },
     { header: "Position", accessorKey: "position", className: "text-gray-500" },
-    { 
-      header: "Action", 
-      accessorKey: "action", 
+    {
+      header: "Action",
+      accessorKey: "action",
       cell: (row) => (
         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedEmployee(row.employee); }}>
           View &rarr;
@@ -157,39 +156,28 @@ function ManagerView() {
 
   return (
     <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Team Overview</TabsTrigger>
-          <TabsTrigger value="give-feedback">Give Feedback</TabsTrigger>
-        </TabsList>
+      <div className="mt-8 space-y-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Employee Feedback Profiles</h3>
+          <p className="text-sm text-gray-500 mb-4">Select an employee to view their aggregated peer feedback, ratings, and collaboration tags.</p>
+          <CompactTable
+            columns={columns}
+            data={paginatedData}
+            onRowClick={(row) => setSelectedEmployee(row.employee)}
+          />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalRecords={tableData.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Employee Feedback Profiles</h3>
-            <p className="text-sm text-gray-500 mb-4">Select an employee to view their aggregated peer feedback, ratings, and collaboration tags.</p>
-            <CompactTable 
-              columns={columns} 
-              data={paginatedData} 
-              onRowClick={(row) => setSelectedEmployee(row.employee)}
-            />
-            <Pagination 
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalRecords={tableData.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="give-feedback">
-          <EmployeeView />
-        </TabsContent>
-      </Tabs>
-
-      <FeedbackDrawer 
-        employee={selectedEmployee} 
-        onClose={() => setSelectedEmployee(null)} 
+      <FeedbackDrawer
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
       />
     </>
   );
@@ -226,7 +214,7 @@ function EmployeeView() {
       } catch (meError) {
         console.warn("Could not load own profile");
       }
-      
+
       const empRes = await getPeerFeedbackColleagues();
       if (empRes.data.success) {
         setEmployees(empRes.data.data);
@@ -279,10 +267,10 @@ function EmployeeView() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <DraftStatus status={draftStatus} lastSaved={lastSaved} onDiscard={discardDraft} />
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Select Colleague</label>
-            <select 
+            <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
               value={targetEmployeeId}
               onChange={(e) => setTargetEmployeeId(e.target.value)}
@@ -316,12 +304,12 @@ function EmployeeView() {
               {COLLABORATION_TAGS.map(tag => {
                 const isSelected = selectedTags.includes(tag);
                 return (
-                  <Badge 
+                  <Badge
                     key={tag}
                     variant={isSelected ? "default" : "outline"}
                     className={`cursor-pointer px-3 py-1 text-sm font-medium transition-colors ${
-                      isSelected 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent' 
+                      isSelected
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
                     }`}
                     onClick={() => toggleTag(tag)}
@@ -333,9 +321,9 @@ function EmployeeView() {
             </div>
           </div>
 
-          <Button 
-            type="submit" 
-            disabled={submitting} 
+          <Button
+            type="submit"
+            disabled={submitting}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
           >
             {submitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Target className="w-5 h-5 mr-2" />}

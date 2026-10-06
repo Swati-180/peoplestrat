@@ -68,11 +68,21 @@ export default function MyProfile() {
   const handleUploadSuccess = (updatedData) => {
     setProfile(p => ({
       ...p,
+      name: updatedData.name || p.name,
+      location: updatedData.location || p.location,
+      currentRole: updatedData.currentRole || p.currentRole,
+      position: updatedData.currentRole || p.position,
       skills: updatedData.skills,
-      experience_years: updatedData.experience_years
+      experience_years: updatedData.experience_years,
+      workExperience: updatedData.workExperience || p.workExperience,
+      education: updatedData.education || p.education,
+      projects: updatedData.projects || p.projects,
+      certifications: updatedData.certifications || p.certifications,
+      achievements: updatedData.achievements || p.achievements
     }));
     setEditData(p => ({
       ...p,
+      location: updatedData.location || p.location,
       skills: updatedData.skills
     }));
   };
@@ -232,11 +242,119 @@ export default function MyProfile() {
           )}
         </CardContent>
       </Card>
-      
-      <ResumeUploadModal 
-        isOpen={isUploadModalOpen} 
-        onClose={() => setIsUploadModalOpen(false)} 
-        onSuccess={handleUploadSuccess} 
+
+      {/* Work Experience */}
+      {(profile.workExperience && profile.workExperience.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-indigo-500" /> Employment History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {profile.workExperience.map((job, idx) => (
+                <div key={idx} className="border-l-2 border-indigo-100 pl-4 py-1 relative">
+                  <div className="absolute w-3 h-3 bg-indigo-500 rounded-full -left-[7px] top-2 border-2 border-white"></div>
+                  <h4 className="font-bold text-slate-900">{job.jobTitle}</h4>
+                  <p className="text-sm text-blue-600 font-semibold">{job.company} {job.location && <span className="text-slate-500 font-normal ml-2">({job.location})</span>}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {job.startDate ? new Date(job.startDate).toLocaleDateString('en-US', {month: 'short', year:'numeric'}) : 'Unknown'} -
+                    {job.isCurrent ? ' Present' : (job.endDate ? new Date(job.endDate).toLocaleDateString('en-US', {month: 'short', year:'numeric'}) : ' Unknown')}
+                    {job.durationMonths ? <span className="ml-2 font-medium">({Math.floor(job.durationMonths / 12)}y {job.durationMonths % 12}m)</span> : null}
+                  </p>
+                  {job.responsibilities && job.responsibilities.length > 0 && (
+                    <ul className="mt-2 text-sm text-slate-600 list-disc list-inside space-y-1">
+                      {job.responsibilities.slice(0,3).map((r, i) => <li key={i}>{r}</li>)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Projects */}
+      {(profile.projects && profile.projects.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Award className="h-4 w-4 text-blue-500" /> Projects
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {profile.projects.map((proj, idx) => (
+                <div key={idx} className="border-l-2 border-blue-100 pl-4 py-1 relative">
+                  <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-2 border-2 border-white"></div>
+                  <h4 className="font-bold text-slate-900">{proj.name}</h4>
+                  <p className="text-sm text-slate-600 mt-1">{proj.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Education & Achievements */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {(profile.education && profile.education.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-emerald-500" /> Education
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {profile.education.map((edu, idx) => (
+                  <div key={idx} className="border-l-2 border-emerald-100 pl-4 py-1">
+                    <h4 className="font-bold text-slate-900">{edu.degree || edu.field}</h4>
+                    <p className="text-sm text-slate-600 font-semibold">{edu.institution}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {edu.startDate} - {edu.endDate}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {((profile.certifications && profile.certifications.length > 0) || (profile.achievements && profile.achievements.length > 0)) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Award className="h-4 w-4 text-amber-500" /> Certifications & Achievements
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {profile.certifications && profile.certifications.length > 0 && (
+                <div className="mb-4">
+                  <h5 className="text-sm font-semibold text-slate-800 mb-2">Certifications</h5>
+                  <ul className="list-disc pl-4 text-sm text-slate-600 space-y-1">
+                    {profile.certifications.map((cert, idx) => <li key={idx}>{cert}</li>)}
+                  </ul>
+                </div>
+              )}
+              {profile.achievements && profile.achievements.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-semibold text-slate-800 mb-2">Achievements</h5>
+                  <ul className="list-disc pl-4 text-sm text-slate-600 space-y-1">
+                    {profile.achievements.map((ach, idx) => <li key={idx}>{ach}</li>)}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <ResumeUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={handleUploadSuccess}
       />
     </div>
   );
