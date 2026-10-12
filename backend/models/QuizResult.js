@@ -18,13 +18,25 @@ const quizResultSchema = new mongoose.Schema(
     totalQuestionsAnswered: { type: Number, default: null },
     results: { type: mongoose.Schema.Types.Mixed, default: null },
     skills: { type: [mongoose.Schema.Types.Mixed], default: null },
-    webhookEventId: { type: String, default: null },
+    // Set ONLY on webhook completion. Must stay absent (not null) on
+    // initiated docs: a stored null IS indexed and breaks the unique
+    // constraint on the second document. See index below.
+    webhookEventId: { type: String, default: undefined },
   },
   { timestamps: true }
 );
 
 quizResultSchema.index({ userId: 1 });
-quizResultSchema.index({ webhookEventId: 1 }, { unique: true, sparse: true });
+// Partial (not sparse): uniqueness enforced only when a real string event id
+// is present. Missing or null values are excluded from the index, so any
+// number of initiated docs can coexist.
+quizResultSchema.index(
+  { webhookEventId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { webhookEventId: { $exists: true, $type: 'string' } },
+  }
+);
 quizResultSchema.index({ organizationId: 1, userId: 1 });
 
 export default mongoose.model('QuizResult', quizResultSchema);
