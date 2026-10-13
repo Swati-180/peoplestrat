@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { AuthProvider, useAuth } from "./lib/auth.jsx";
 import { OrganizationProvider, useOrganization } from "./contexts/OrganizationContext.jsx";
 import { WorkforceProvider } from "./contexts/WorkforceContext.jsx";
-import { AIProvider } from "./contexts/AIContext.jsx";
+import { AIProvider, useAI } from "./contexts/AIContext.jsx";
 import AIChat from "./components/AIChat.jsx";
 
 /* ---------------- PAGES ---------------- */
@@ -240,8 +240,8 @@ function AppRouter() {
 function AppContent() {
   const { user, isLoading } = useAuth();
   const { activeRole } = useOrganization();
+  const { isChatOpen, setIsChatOpen } = useAI();
   const [location, navigate] = useLocation();
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const isAuthPage = location === "/login" || location === "/register";
   const isLandingPage = location === "/";

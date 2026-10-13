@@ -158,6 +158,54 @@ describe('Phase 4A Cross-Organization Isolation Tests', () => {
     expect(res.body.error).toBe('Target employee not found.');
   });
 
+  it('14a. Missing target employee ID in PeerFeedback returns 400', async () => {
+    const res = await request(app)
+      .post('/api/feedback/submit')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .set('x-organization-id', orgA._id.toString())
+      .send({ rating: 4 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Target employee ID is required.');
+  });
+
+  it('14b. Nonexistent target employee in same org returns 404', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app)
+      .post('/api/feedback/submit')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .set('x-organization-id', orgA._id.toString())
+      .send({ targetEmployeeId: fakeId, rating: 4 });
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Target employee not found.');
+  });
+
+  it('14c. User without membership in organization is rejected with 403', async () => {
+    // userB attempts to submit feedback in orgA context
+    const res = await request(app)
+      .post('/api/feedback/submit')
+      .set('Authorization', `Bearer ${tokenB}`)
+      .set('x-organization-id', orgA._id.toString())
+      .send({ targetEmployeeId: empA._id, rating: 4 });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Access denied: You are not a member of this organization.');
+  });
+
+  it('14d. Missing source employee record in organization returns 404', async () => {
+    // Create an employee-role user who does not have an Employee document in orgA
+    const password = await bcrypt.hash('password123', 10);
+    const userNoEmp = await User.create({ name: 'No Emp', username: 'noemp', email: 'noemp@a.com', password, role: 'employee' });
+    await OrganizationMembership.create({ organizationId: orgA._id, userId: userNoEmp._id, role: 'employee' });
+    const tokenNoEmp = jwt.sign({ id: userNoEmp._id, email: userNoEmp.email }, process.env.JWT_SECRET);
+
+    const res = await request(app)
+      .post('/api/feedback/submit')
+      .set('Authorization', `Bearer ${tokenNoEmp}`)
+      .set('x-organization-id', orgA._id.toString())
+      .send({ targetEmployeeId: empA._id, rating: 4 });
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Source employee record not found.');
+  });
+
   it('15. Question scoped correctly to Assessment ownership', async () => {
     const globalAss = await Assessment.findOne({ title: 'Global' });
     const orgAAss = await Assessment.findOne({ title: 'Custom A' });

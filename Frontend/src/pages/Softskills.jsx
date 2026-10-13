@@ -147,7 +147,7 @@ export default function Softskills() {
       <KpiStrip items={kpis} />
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 min-w-0">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Behavioral Assessment Overview</h3>
           <CompactTable 
             columns={columns} 

@@ -156,8 +156,8 @@ function ManagerView() {
 
   return (
     <>
-      <div className="mt-8 space-y-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="mt-8 space-y-6 max-w-full min-w-0">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full max-w-full min-w-0">
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Employee Feedback Profiles</h3>
           <p className="text-sm text-gray-500 mb-4">Select an employee to view their aggregated peer feedback, ratings, and collaboration tags.</p>
           <CompactTable

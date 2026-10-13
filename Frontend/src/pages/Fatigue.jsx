@@ -9,10 +9,13 @@ import EmployeeDrawer from "@/components/EmployeeDrawer";
 import { Loader2, Activity, HeartPulse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useAI } from "@/contexts/AIContext";
 
 export default function Fatigue() {
   const { employees, isLoading } = useWorkforceData();
   const { user } = useAuth();
+  const { isChatOpen, isChatDocked, dockPosition } = useAI();
+  const isAssistantCoveringRight = isChatOpen && !isChatDocked && dockPosition === 'right';
   const isEmployee = user?.role === "employee";
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -123,7 +126,7 @@ export default function Fatigue() {
   }
 
   return (
-    <div className="p-8 bg-[#FAFAFA] min-h-screen">
+    <div className="p-4 sm:p-8 bg-[#FAFAFA] min-h-screen pb-32 max-w-full min-w-0">
       <PageHeader 
         title={
           <span className="flex items-center gap-3">
@@ -135,20 +138,35 @@ export default function Fatigue() {
 
       <KpiStrip items={kpis} />
 
-      <div className="mt-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Fatigue Risk Matrix</h3>
-        <CompactTable 
-          columns={columns} 
-          data={paginatedData} 
-          onRowClick={(row) => setSelectedEmployee(row.employee)}
-        />
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalRecords={tableData.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
+      <div className={`mt-8 max-w-full min-w-0 transition-all duration-300 ${isAssistantCoveringRight ? 'xl:mr-[385px]' : ''}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Employee Fatigue Risk Matrix</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Workload intensity, fatigue scores, risk levels, and intervention tracking
+            </p>
+          </div>
+          <span className="text-xs text-slate-400 font-medium">
+            Showing {paginatedData.length} of {tableData.length} evaluated employees
+          </span>
+        </div>
+        <div className="w-full max-w-full min-w-0">
+          <CompactTable
+            columns={columns}
+            data={paginatedData}
+            minWidth="min-w-[840px]"
+            onRowClick={(row) => setSelectedEmployee(row.employee)}
+          />
+        </div>
+        <div className="mt-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalRecords={tableData.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
 
       <EmployeeDrawer 
