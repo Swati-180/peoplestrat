@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import EmployeeProfileCard from "@/components/EmployeeProfileCard";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import {
   MessageCircle,
   Send,
@@ -19,7 +20,7 @@ import {
 import { useAI } from "@/contexts/AIContext";
 
 const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger, mode = 'workforce' }) => {
-  const { messages, setMessages, sendMessage, isLoading, clearChat } = useAI();
+  const { messages, setMessages, sendMessage, isLoading, clearChat, workforceData } = useAI();
   const [inputMessage, setInputMessage] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef(null);
@@ -164,8 +165,16 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
       }
     }
 
+    if (message.type === "user") {
+      return (
+        <div className={`whitespace-pre-wrap break-words overflow-hidden ${isFloating ? "text-sm" : ""}`}>
+          {message.content}
+        </div>
+      );
+    }
+
     if (isFloating) {
-      // Text-only mode for floating chat
+      // Markdown rendering for floating chat
       let textContent = message.content;
 
       if (message.detectedEmployees && message.detectedEmployees.length > 0) {
@@ -174,13 +183,13 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
       }
 
       return (
-        <div className="text-sm whitespace-pre-wrap break-words overflow-hidden">{textContent}</div>
+        <MarkdownRenderer content={textContent} className="text-sm" />
       );
     } else {
       // Rich UI mode for full page
       return (
         <div className="w-full max-w-full space-y-4">
-          <div className="whitespace-pre-wrap break-words overflow-hidden">{message.content}</div>
+          <MarkdownRenderer content={message.content} />
 
           {/* Employee Profile Cards */}
           {message.type === "ai" && message.detectedEmployees && message.detectedEmployees.length > 0 && (
@@ -222,14 +231,16 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
     }
   };
 
+  const knownEmployeeNames = Object.keys(workforceData || {});
+  const sampleEmployeePrompt = knownEmployeeNames.length > 0 ? `Tell me about ${knownEmployeeNames[0]}` : null;
+
   const suggestedPrompts = [
     "Who is at burnout risk?",
     "Who should be reskilled?",
     "Who is underutilized?",
     "Show me high-risk employees",
     "Who are our top performers?",
-    "Tell me about Sarah Johnson",
-    "What about Michael Chen?"
+    ...(sampleEmployeePrompt ? [sampleEmployeePrompt] : ["How to optimize team productivity?"])
   ];
 
   if (isFloating) {
