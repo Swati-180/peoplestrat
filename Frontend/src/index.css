@@ -464,6 +464,8 @@
   background: #6A89A7 !important;
   color: white !important;
   border-radius: 12px 12px 2px 12px !important;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .ai-bot-bubble {
@@ -471,6 +473,37 @@
   color: #1E2D3D !important;
   border-radius: 2px 12px 12px 12px !important;
   border: 1px solid #D4E5F7 !important;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   AI TABLE CONTAINER (HORIZONTAL SCROLL FOR WIDE TABLES)
+   ============================================================ */
+
+.ai-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 #F1F5F9;
+}
+
+.ai-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.ai-table-container::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 3px;
+}
+
+.ai-table-container::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+.ai-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }
 
 /* ============================================================
@@ -508,6 +541,27 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #BDDDFC; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #88BDF2; }
+
+/* Responsive table horizontal scrollbar */
+.compact-table-container {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.compact-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+.compact-table-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 3px;
+}
+.compact-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.compact-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 
 /* link transitions */
 a { transition: color 0.15s ease; }

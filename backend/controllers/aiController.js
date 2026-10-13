@@ -150,30 +150,104 @@ ${dataContext}`;
 
     } else {
       // Default Workforce mode
-      const words = message.replace(/[?!.]/g, '').split(' ').filter(w => w.length > 2);
-      const nameRegex = words.length > 0 ? new RegExp(words.join('|'), 'i') : null;
+      const cleanMessage = (message || '').trim();
 
-      const [mentionedEmployee, generalAnalyses] = await Promise.all([
-        nameRegex ? Employee.findOne({ name: { $regex: nameRegex }, organizationId: req.organizationId }) : null,
-        AnalysisResult.find({ organizationId: req.organizationId }).sort({ analysis_date: -1 }).limit(100).populate('employee_id', 'name band process_area position skills')
-      ]);
+      // Retrieve authorized employees belonging to the active organization
+      const orgEmployees = await Employee.find({ organizationId: req.organizationId })
+        .select('name position band process_area sub_process department productivity utilization fitmentScore fatigueScore skills');
+
+      // Attempt to resolve mentioned employee within active organization
+      let mentionedEmployee = null;
+      if (cleanMessage) {
+        // 1. Direct case-insensitive full name match
+        mentionedEmployee = orgEmployees.find(e =>
+          e.name && cleanMessage.toLowerCase().includes(e.name.toLowerCase())
+        );
+
+        // 2. Token-based match for first or last name
+        if (!mentionedEmployee) {
+          const stopWords = new Set([
+            'tell', 'about', 'what', 'who', 'show', 'info', 'give', 'team', 'find', 'does',
+            'have', 'with', 'from', 'user', 'role', 'more', 'details', 'know', 'how', 'good',
+            'high', 'risk', 'burnout', 'reskill', 'perform', 'top', 'person', 'people', 'are'
+          ]);
+          const tokens = cleanMessage.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 3 && !stopWords.has(w));
+
+          if (tokens.length > 0) {
+            for (const emp of orgEmployees) {
+              const nameTokens = emp.name.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+              const matches = nameTokens.filter(t => tokens.includes(t));
+              if (matches.length > 0 && matches.length === nameTokens.length) {
+                mentionedEmployee = emp;
+                break;
+              }
+            }
+            if (!mentionedEmployee) {
+              for (const emp of orgEmployees) {
+                const nameTokens = emp.name.toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+                if (nameTokens.some(t => tokens.includes(t))) {
+                  mentionedEmployee = emp;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Detect if user specifically queried about a person who does not exist
+      const individualQueryMatch = cleanMessage.match(/(?:tell\s+me\s+about|who\s+is|what\s+about|info\s+(?:on|for)|details\s+(?:on|for)|how\s+is|search\s+for|show\s+me)\s+([A-Za-z\s]+?)(?:\?|\.|$)/i);
+      const queriedTargetName = individualQueryMatch ? individualQueryMatch[1].trim() : null;
+      const isSpecificQueryForNonexistent = !mentionedEmployee && queriedTargetName && queriedTargetName.length > 2 && !['burnout', 'reskilling', 'top performers', 'the team', 'fatigue', 'high risk'].includes(queriedTargetName.toLowerCase());
+
+      const generalAnalyses = await AnalysisResult.find({ organizationId: req.organizationId })
+        .sort({ analysis_date: -1 })
+        .limit(100)
+        .populate('employee_id', 'name band process_area position skills');
 
       let mentionedAnalysis = null;
       if (mentionedEmployee) {
-        mentionedAnalysis = await AnalysisResult.findOne({ employee_id: mentionedEmployee._id, organizationId: req.organizationId }).sort({ analysis_date: -1 });
+        mentionedAnalysis = await AnalysisResult.findOne({
+          employee_id: mentionedEmployee._id,
+          organizationId: req.organizationId
+        }).sort({ analysis_date: -1 });
+
+        if (!mentionedAnalysis) {
+          mentionedAnalysis = await AnalysisResult.findOne({
+            employee_id: mentionedEmployee._id
+          }).sort({ analysis_date: -1 });
+        }
       }
 
+      const effectiveFitment = (mentionedAnalysis && mentionedAnalysis.fitment_score) || mentionedEmployee?.fitmentScore || 0;
+      const effectiveProductivity = (mentionedAnalysis && mentionedAnalysis.productivity_score) || mentionedEmployee?.productivity || 0;
+      const effectiveFatigue = (mentionedAnalysis && mentionedAnalysis.fatigue_score) || mentionedEmployee?.fatigueScore || 0;
+      const effectiveUtilization = (mentionedAnalysis && mentionedAnalysis.utilization_score) || mentionedEmployee?.utilization || 0;
+      const effectiveRecommendation = (mentionedAnalysis && mentionedAnalysis.recommendation) || (effectiveFitment >= 80 ? 'Optimal match for current role' : 'Core contributor');
+
       let dataContext = "WORKFORCE DATA SNAPSHOT (Real-time):\n";
-      generalAnalyses.forEach((a, i) => {
-        dataContext += `${i + 1}. ${a.employee_id?.name || 'Unknown'}: Role=${a.employee_id?.position || 'N/A'}, Fitment=${a.fitment_score}%, Productivity=${a.productivity_score}%, Fatigue=${a.fatigue_score}%, Status=${a.recommendation_type}\n`;
+      orgEmployees.slice(0, 50).forEach((emp, i) => {
+        const match = generalAnalyses.find(a => a.employee_id?._id?.toString() === emp._id.toString());
+        const fit = (match && match.fitment_score) || emp.fitmentScore || 0;
+        const prod = (match && match.productivity_score) || emp.productivity || 0;
+        const fat = (match && match.fatigue_score) || emp.fatigueScore || 0;
+        const recType = (match && match.recommendation_type) || (fit >= 80 ? 'optimal' : 'stable');
+        dataContext += `${i + 1}. ${emp.name}: Role=${emp.position || 'N/A'}, Fitment=${fit}%, Productivity=${prod}%, Fatigue=${fat}%, Status=${recType}\n`;
       });
 
-      if (mentionedEmployee && mentionedAnalysis) {
+      if (mentionedEmployee) {
         dataContext += `\nCRITICAL FOCUS: DATA FOR ${mentionedEmployee.name.toUpperCase()}:\n`;
-        dataContext += `- Role: ${mentionedEmployee.position}, Band: ${mentionedEmployee.band}, Process: ${mentionedEmployee.process_area}\n`;
-        dataContext += `- Precise Scores: Fitment: ${mentionedAnalysis.fitment_score}/100, Performance: ${mentionedAnalysis.productivity_score}%, Fatigue: ${mentionedAnalysis.fatigue_score}%\n`;
-        dataContext += `- System Recommendation: ${mentionedAnalysis.recommendation}\n`;
-        dataContext += `- Skill Breakdown: ${JSON.stringify(mentionedAnalysis.details)}\n`;
+        dataContext += `- Name: ${mentionedEmployee.name}\n`;
+        dataContext += `- Role: ${mentionedEmployee.position || 'N/A'}, Band: ${mentionedEmployee.band || 'N/A'}, Process: ${mentionedEmployee.process_area || 'N/A'}\n`;
+        dataContext += `- Department: ${mentionedEmployee.department || 'N/A'}\n`;
+        dataContext += `- Skills: ${(mentionedEmployee.skills || []).join(', ') || 'N/A'}\n`;
+        dataContext += `- Precise Scores: Fitment: ${effectiveFitment}/100, Performance: ${effectiveProductivity}%, Fatigue: ${effectiveFatigue}%, Utilization: ${effectiveUtilization}%\n`;
+        dataContext += `- System Recommendation: ${effectiveRecommendation}\n`;
+        if (mentionedAnalysis && mentionedAnalysis.details) {
+          dataContext += `- Skill Breakdown: ${JSON.stringify(mentionedAnalysis.details)}\n`;
+        }
+      } else if (isSpecificQueryForNonexistent) {
+        dataContext += `\nNOTICE: The user inquired about "${queriedTargetName}", but no employee with that name exists in this organization's authorized workforce records.\n`;
       }
 
       const systemPrompt = `You are the PeopleStrat Workforce Analyst. 
@@ -182,8 +256,9 @@ DO NOT use general knowledge. ONLY use the names and scores from the DATA CONTEX
 
 ANSWER FORMAT:
 - Be specific. Mention names and exact percentages.
-- For individual analysis (like Sarah Johnson), provide a detailed Fitment & Risk assessment.
-- For "Who is..." questions, list the top 5 relevant employees from the data.
+- For individual analysis of an employee present in the data, provide a detailed Fitment & Risk assessment with structured metrics and recommendations.
+- If the user asks about an individual who does NOT exist in the provided DATA CONTEXT, clearly and politely inform them that no employee with that name exists in their organization's authorized workforce records, and explain that you can only provide insights for authorized employees in their organization.
+- For "Who is..." or "Who should..." questions, list the top relevant employees from the data.
 
 DATA CONTEXT:
 ${dataContext}`;
@@ -206,42 +281,56 @@ ${dataContext}`;
         }
       }
 
-      // Legacy fallback for Workforce Analyst
+      // Deterministic fallback for Workforce Analyst
       let fallbackReply = `[Fallback Response]\n\n`;
       const lowerMessage = message.toLowerCase();
 
-      if (mentionedEmployee && mentionedAnalysis) {
-        fallbackReply += `Data found for ${mentionedEmployee.name}:\n`;
-        fallbackReply += `- Role: ${mentionedEmployee.position}\n`;
-        fallbackReply += `- Fitment Score: ${mentionedAnalysis.fitment_score}%\n`;
-        fallbackReply += `- Productivity: ${mentionedAnalysis.productivity_score}%\n`;
-        fallbackReply += `- Fatigue/Burnout Risk: ${mentionedAnalysis.fatigue_score}%\n`;
+      if (mentionedEmployee) {
+        fallbackReply += `Data found for **${mentionedEmployee.name}**:\n`;
+        fallbackReply += `- **Role:** ${mentionedEmployee.position || 'N/A'} (Band: ${mentionedEmployee.band || 'N/A'})\n`;
+        fallbackReply += `- **Department:** ${mentionedEmployee.department || 'N/A'}\n`;
+        fallbackReply += `- **Fitment Score:** ${effectiveFitment}%\n`;
+        fallbackReply += `- **Productivity:** ${effectiveProductivity}%\n`;
+        fallbackReply += `- **Fatigue / Burnout Risk:** ${effectiveFatigue}%\n`;
+        fallbackReply += `- **Utilization:** ${effectiveUtilization}%\n`;
+        fallbackReply += `- **Recommendation:** ${effectiveRecommendation}\n`;
+      } else if (isSpecificQueryForNonexistent) {
+        fallbackReply += `No employee matching "${queriedTargetName}" was found in your organization's authorized workforce records.\n\nPlease verify the spelling or confirm that the employee is registered under your active organization.`;
       } else if (lowerMessage.includes('burnout') || lowerMessage.includes('fatigue') || lowerMessage.includes('risk')) {
-        const highRisk = generalAnalyses.filter(a => a.fatigue_score >= 70).slice(0, 5);
+        const highRisk = orgEmployees
+          .map(e => ({ name: e.name, role: e.position, fatigue: e.fatigueScore || 0 }))
+          .filter(e => e.fatigue >= 70)
+          .slice(0, 5);
         fallbackReply += `Here are the top employees currently at risk of burnout (Fatigue >= 70%):\n\n`;
         if (highRisk.length === 0) fallbackReply += `No high-risk employees found in the current dataset.\n`;
-        highRisk.forEach(a => {
-           fallbackReply += `- ${a.employee_id?.name || 'Unknown'} (${a.employee_id?.position || 'N/A'}): Fatigue Score: ${a.fatigue_score}%\n`;
+        highRisk.forEach(e => {
+          fallbackReply += `- **${e.name}** (${e.role || 'N/A'}): Fatigue Score: ${e.fatigue}%\n`;
         });
       } else if (lowerMessage.includes('reskill') || lowerMessage.includes('fit') || lowerMessage.includes('train')) {
-        const lowFit = generalAnalyses.filter(a => a.fitment_score < 70).slice(0, 5);
+        const lowFit = orgEmployees
+          .map(e => ({ name: e.name, role: e.position, fitment: e.fitmentScore || 0 }))
+          .filter(e => e.fitment < 70)
+          .slice(0, 5);
         fallbackReply += `Here are employees who might benefit from reskilling or training (Fitment < 70%):\n\n`;
         if (lowFit.length === 0) fallbackReply += `No employees urgently needing reskilling found in the current dataset.\n`;
-        lowFit.forEach(a => {
-           fallbackReply += `- ${a.employee_id?.name || 'Unknown'} (${a.employee_id?.position || 'N/A'}): Fitment Score: ${a.fitment_score}%\n`;
+        lowFit.forEach(e => {
+          fallbackReply += `- **${e.name}** (${e.role || 'N/A'}): Fitment Score: ${e.fitment}%\n`;
         });
       } else if (lowerMessage.includes('top') || lowerMessage.includes('perform')) {
-        const topPerformers = generalAnalyses.filter(a => a.productivity_score >= 85).slice(0, 5);
+        const topPerformers = orgEmployees
+          .map(e => ({ name: e.name, role: e.position, productivity: e.productivity || 0 }))
+          .filter(e => e.productivity >= 85)
+          .slice(0, 5);
         fallbackReply += `Here are our top performers based on recent analysis (Productivity >= 85%):\n\n`;
         if (topPerformers.length === 0) fallbackReply += `No top performers found matching the criteria.\n`;
-        topPerformers.forEach(a => {
-           fallbackReply += `- ${a.employee_id?.name || 'Unknown'} (${a.employee_id?.position || 'N/A'}): Productivity: ${a.productivity_score}%\n`;
+        topPerformers.forEach(e => {
+          fallbackReply += `- **${e.name}** (${e.role || 'N/A'}): Productivity: ${e.productivity}%\n`;
         });
       } else {
         fallbackReply += `I couldn't identify a specific request. Here is a general workforce summary:\n\n`;
-        fallbackReply += `Total records analyzed: ${generalAnalyses.length}\n`;
-        const avgFit = generalAnalyses.length ? (generalAnalyses.reduce((acc, curr) => acc + curr.fitment_score, 0) / generalAnalyses.length).toFixed(1) : 0;
-        const avgProd = generalAnalyses.length ? (generalAnalyses.reduce((acc, curr) => acc + curr.productivity_score, 0) / generalAnalyses.length).toFixed(1) : 0;
+        fallbackReply += `Total records analyzed: ${orgEmployees.length}\n`;
+        const avgFit = orgEmployees.length ? (orgEmployees.reduce((acc, curr) => acc + (curr.fitmentScore || 0), 0) / orgEmployees.length).toFixed(1) : 0;
+        const avgProd = orgEmployees.length ? (orgEmployees.reduce((acc, curr) => acc + (curr.productivity || 0), 0) / orgEmployees.length).toFixed(1) : 0;
         fallbackReply += `- Average Workforce Fitment: ${avgFit}%\n`;
         fallbackReply += `- Average Workforce Productivity: ${avgProd}%\n`;
       }

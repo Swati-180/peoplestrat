@@ -18,6 +18,9 @@ export const AIProvider = ({ children }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatDocked, setIsChatDocked] = useState(false);
+  const [dockPosition, setDockPosition] = useState("right"); // "right" | "left"
   const { employees: centralEmployees, getOverallRisk } = useWorkforceData();
   const { activeOrganizationId } = useOrganization();
 
@@ -131,7 +134,13 @@ export const AIProvider = ({ children }) => {
     chatHistory,
     sendMessage,
     clearChat,
-    workforceData
+    workforceData,
+    isChatOpen,
+    setIsChatOpen,
+    isChatDocked,
+    setIsChatDocked,
+    dockPosition,
+    setDockPosition
   };
 
   return (

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import EmployeeProfileCard from "@/components/EmployeeProfileCard";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import {
   MessageCircle,
   Send,
@@ -14,14 +15,36 @@ import {
   Brain,
   Loader2,
   Minimize2,
-  Maximize2
+  Maximize2,
+  Minus,
+  ChevronUp,
+  ArrowLeftRight
 } from "lucide-react";
 import { useAI } from "@/contexts/AIContext";
 
 const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger, mode = 'workforce' }) => {
-  const { messages, setMessages, sendMessage, isLoading, clearChat } = useAI();
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+    isLoading,
+    clearChat,
+    workforceData,
+    isChatDocked: contextIsDocked,
+    setIsChatDocked: contextSetIsDocked,
+    dockPosition: contextDockPosition,
+    setDockPosition: contextSetDockPosition
+  } = useAI();
+  const [localIsDocked, setLocalIsDocked] = useState(false);
+  const [localDockPosition, setLocalDockPosition] = useState("right");
+
+  const isDocked = contextIsDocked !== undefined ? contextIsDocked : localIsDocked;
+  const setIsDocked = contextSetIsDocked || setLocalIsDocked;
+  const dockPosition = contextDockPosition || localDockPosition;
+  const setDockPosition = contextSetDockPosition || setLocalDockPosition;
+
   const [inputMessage, setInputMessage] = useState("");
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef(null);
 
   const isCareerCoach = mode === 'career_coach';
@@ -33,6 +56,16 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
   };
 
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
+
+  useEffect(() => {
     if (suggestionTrigger) {
       setInputMessage(suggestionTrigger);
     }
@@ -41,6 +74,12 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsDocked(false);
+    }
+  }, [isOpen]);
 
   // Helper function to render employee data as text for floating chat
   const renderEmployeeAsText = (employee) => {
@@ -164,29 +203,54 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
       }
     }
 
-    if (isFloating) {
-      // Text-only mode for floating chat
-      let textContent = message.content;
+    if (message.type === "user") {
+      return (
+        <div className={`whitespace-pre-wrap break-words min-w-0 overflow-hidden [overflow-wrap:anywhere] ${isFloating ? "text-sm" : ""}`}>
+          {message.content}
+        </div>
+      );
+    }
 
+    if (isFloating) {
+      // If expanded to fullscreen and employee cards detected, show card grid
+      if (isFullscreen && message.type === "ai" && message.detectedEmployees && message.detectedEmployees.length > 0) {
+        return (
+          <div className="w-full max-w-full min-w-0 space-y-4">
+            <MarkdownRenderer content={message.content} className="text-sm" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+              {message.detectedEmployees.map((employee, index) => (
+                <div key={index} className="max-w-full min-w-0 overflow-hidden">
+                  <EmployeeProfileCard employee={employee} />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // Compact floating mode: append text summary of employees to avoid card overflow
+      let textContent = message.content;
       if (message.detectedEmployees && message.detectedEmployees.length > 0) {
         const employeeTexts = message.detectedEmployees.map(renderEmployeeAsText);
         textContent += "\n\n" + employeeTexts.join("\n");
       }
 
       return (
-        <div className="text-sm whitespace-pre-wrap break-words overflow-hidden">{textContent}</div>
+        <div className="w-full max-w-full min-w-0">
+          <MarkdownRenderer content={textContent} className="text-sm" />
+        </div>
       );
     } else {
       // Rich UI mode for full page
       return (
-        <div className="w-full max-w-full space-y-4">
-          <div className="whitespace-pre-wrap break-words overflow-hidden">{message.content}</div>
+        <div className="w-full max-w-full min-w-0 space-y-4">
+          <MarkdownRenderer content={message.content} />
 
           {/* Employee Profile Cards */}
           {message.type === "ai" && message.detectedEmployees && message.detectedEmployees.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {message.detectedEmployees.map((employee, index) => (
-                <div key={index} className="max-w-full overflow-hidden">
+                <div key={index} className="max-w-full min-w-0 overflow-hidden">
                   <EmployeeProfileCard employee={employee} />
                 </div>
               ))}
@@ -222,14 +286,16 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
     }
   };
 
+  const knownEmployeeNames = Object.keys(workforceData || {});
+  const sampleEmployeePrompt = knownEmployeeNames.length > 0 ? `Tell me about ${knownEmployeeNames[0]}` : null;
+
   const suggestedPrompts = [
     "Who is at burnout risk?",
     "Who should be reskilled?",
     "Who is underutilized?",
     "Show me high-risk employees",
     "Who are our top performers?",
-    "Tell me about Sarah Johnson",
-    "What about Michael Chen?"
+    ...(sampleEmployeePrompt ? [sampleEmployeePrompt] : ["How to optimize team productivity?"])
   ];
 
   if (isFloating) {
@@ -237,10 +303,14 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
       <>
         {/* Floating Button */}
         {!isOpen && (
-          <div className="fixed bottom-6 right-6 z-50">
+          <div className={`fixed z-50 transition-all duration-300 ${
+            dockPosition === 'left' ? 'bottom-6 left-6 lg:left-72' : 'bottom-6 right-6'
+          }`}>
             <button
               onClick={onToggle}
               className="ai-float-btn"
+              title="Open AI Assistant"
+              aria-label="Open AI Assistant"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
             >
               <Brain size={22} />
@@ -248,27 +318,135 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
           </div>
         )}
 
+        {/* Docked Pill Bar when minimized */}
+        {isOpen && isDocked && !isFullscreen && (
+          <div className={`fixed z-50 transition-all duration-300 ${
+            dockPosition === 'left'
+              ? 'bottom-4 left-4 sm:bottom-6 sm:left-6 lg:left-72'
+              : 'bottom-4 right-4 sm:bottom-6 sm:right-6'
+          }`}>
+            <div className="flex items-center gap-2 bg-[#053259] text-white pl-3.5 pr-2 py-2 rounded-full shadow-xl border border-slate-700/50 hover:bg-[#073b68] transition-colors">
+              <div className="w-6 h-6 rounded-md bg-[#6D8196] flex items-center justify-center shrink-0">
+                <Brain size={13} className="text-[#FFFFE3]" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDocked(false)}
+                className="text-xs font-semibold text-white/95 hover:text-white flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                title="Restore AI Assistant"
+              >
+                <span>{chatTitle}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              </button>
+              <div className="h-4 w-px bg-white/20 mx-0.5" />
+              <button
+                type="button"
+                onClick={() => setDockPosition(dockPosition === 'right' ? 'left' : 'right')}
+                title={dockPosition === 'right' ? "Move to left side" : "Move to right side"}
+                aria-label={dockPosition === 'right' ? "Move to left side" : "Move to right side"}
+                className="text-slate-300 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <ArrowLeftRight size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDocked(false)}
+                title="Restore window"
+                aria-label="Restore window"
+                className="text-slate-300 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDocked(false);
+                  onToggle();
+                }}
+                title="Close assistant"
+                aria-label="Close assistant"
+                className="text-slate-300 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Backdrop for Expanded Fullscreen Mode */}
+        {isOpen && isFullscreen && (
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity"
+            onClick={() => setIsFullscreen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Chat Window */}
-        {isOpen && (
-          <div className="ai-chat-window fixed bottom-6 right-6 z-50 w-96 h-[600px] flex flex-col">
+        {isOpen && !isDocked && (
+          <div
+            className={`ai-chat-window fixed z-50 flex flex-col transition-all duration-300 ease-in-out bg-white ${
+              isFullscreen
+                ? "inset-3 sm:inset-6 md:inset-8 max-w-5xl mx-auto h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-3rem)] md:h-[calc(100vh-4rem)] rounded-2xl shadow-2xl"
+                : dockPosition === 'left'
+                  ? "bottom-3 left-3 sm:bottom-6 sm:left-6 lg:left-72 w-[calc(100vw-1.5rem)] sm:w-[370px] h-[520px] max-h-[calc(100vh-4.5rem)] rounded-2xl shadow-xl"
+                  : "bottom-3 right-3 sm:bottom-6 sm:right-6 w-[calc(100vw-1.5rem)] sm:w-[370px] h-[520px] max-h-[calc(100vh-4.5rem)] rounded-2xl shadow-xl"
+            }`}
+          >
             {/* Header */}
-            <div className="ai-chat-header flex items-center justify-between p-4">
+            <div className="ai-chat-header flex items-center justify-between p-4 flex-shrink-0">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#6D8196', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Brain size={14} style={{ color: '#FFFFE3' }} />
                 </div>
-                <span className="chat-title" style={{ fontWeight: 600, fontSize: '14px', color: '#FFFFFF' }}>{chatTitle}</span>
+                <div className="min-w-0">
+                  <span className="chat-title block truncate" style={{ fontWeight: 600, fontSize: '14px', color: '#FFFFFF' }}>{chatTitle}</span>
+                  {isFullscreen && (
+                    <span className="text-[11px] text-blue-200/90 block truncate">Expanded View</span>
+                  )}
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {!isFullscreen && (
+                  <button
+                    type="button"
+                    onClick={() => setDockPosition(dockPosition === 'right' ? 'left' : 'right')}
+                    title={dockPosition === 'right' ? "Move assistant to left side" : "Move assistant to right side"}
+                    aria-label={dockPosition === 'right' ? "Move assistant to left side" : "Move assistant to right side"}
+                    style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CBCBCB', transition: 'background 0.15s' }}
+                  >
+                    <ArrowLeftRight size={14} />
+                  </button>
+                )}
+                {!isFullscreen && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDocked(true)}
+                    title="Minimize to dock"
+                    aria-label="Minimize to dock"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CBCBCB', transition: 'background 0.15s' }}
+                  >
+                    <Minus size={14} />
+                  </button>
+                )}
                 <button
-                  onClick={() => setIsMinimized(!isMinimized)}
-                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CBCBCB', transition: 'background 0.15s' }}
+                  type="button"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  title={isFullscreen ? "Exit full screen" : "Expand to full screen"}
+                  aria-label={isFullscreen ? "Exit full screen" : "Expand to full screen"}
+                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CBCBCB', transition: 'background 0.15s' }}
                 >
-                  {isMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
                 <button
-                  onClick={onToggle}
-                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CBCBCB', transition: 'background 0.15s' }}
+                  type="button"
+                  onClick={() => {
+                    setIsDocked(false);
+                    onToggle();
+                  }}
+                  title="Close assistant"
+                  aria-label="Close assistant"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CBCBCB', transition: 'background 0.15s' }}
                 >
                   <X size={14} />
                 </button>
@@ -276,109 +454,110 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
             </div>
 
             {/* Chat Content */}
-            {!isMinimized && (
-              <>
-                <ScrollArea className="flex-1 p-4">
-                  {messages.length === 0 && (
-                    <div className="space-y-3">
-                      <div className="text-center text-gray-500 text-sm mb-4">
-                        Ask me anything about your workforce intelligence
-                      </div>
-                      <div className="space-y-2">
-                        {suggestedPrompts.map((prompt, index) => (
-                          <Button
-                            key={index}
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-left justify-start text-xs"
-                            onClick={() => setInputMessage(prompt)}
-                          >
-                            {prompt}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    {messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex gap-3 ${message.type === "user" ? "justify-end" : "justify-start"}`}
+            <ScrollArea className="flex-1 min-h-0 w-full p-3 sm:p-4">
+              {messages.length === 0 && (
+                <div className="space-y-3 py-2">
+                  <div className="text-center text-gray-500 text-sm mb-4">
+                    Ask me anything about your workforce intelligence
+                  </div>
+                  <div className={`space-y-2 ${isFullscreen ? 'max-w-md mx-auto' : ''}`}>
+                    {suggestedPrompts.map((prompt, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-left justify-start text-xs h-auto py-2 px-3 break-words whitespace-normal"
+                        onClick={() => setInputMessage(prompt)}
                       >
-                        {message.type === "ai" && (
-                          <div className="flex-shrink-0">
-                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(136,189,242,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Bot size={13} style={{ color: '#6A89A7' }} />
-                            </div>
-                          </div>
-                        )}
-                        <div
-                          className={message.type === "user" ? "ai-user-bubble" : "ai-bot-bubble"}
-                          style={{ maxWidth: '80%', padding: '10px 14px' }}
-                        >
-                          <div className="w-full max-w-full overflow-y-auto space-y-4">
-                            {renderMessageContent(message)}
-                          </div>
-
-                          <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
-                            <span>{message.timestamp.toLocaleTimeString()}</span>
-                            {message.isFallback && !isCareerCoach && (
-                              <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-medium border border-amber-200">
-                                Rule-Based Fallback
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {message.type === "user" && (
-                          <div className="flex-shrink-0">
-                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#6A89A7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <User size={13} style={{ color: '#BDDDFC' }} />
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                        {prompt}
+                      </Button>
                     ))}
+                  </div>
+                </div>
+              )}
 
-                    {isLoading && (
-                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
-                        <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(136,189,242,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="space-y-4 w-full min-w-0">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex gap-2.5 sm:gap-3 w-full min-w-0 ${message.type === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    {message.type === "ai" && (
+                      <div className="flex-shrink-0">
+                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(136,189,242,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Bot size={13} style={{ color: '#6A89A7' }} />
                         </div>
-                        <div className="ai-bot-bubble" style={{ padding: '10px 14px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Loader2 size={13} style={{ color: '#6A89A7', animation: 'spin 0.8s linear infinite' }} />
-                            <span style={{ fontSize: '13px', color: '#6A89A7' }}>Analyzing workforce data...</span>
-                          </div>
+                      </div>
+                    )}
+                    <div
+                      className={
+                        message.type === "user"
+                          ? "ai-user-bubble max-w-[85%] sm:max-w-[80%] min-w-0"
+                          : `ai-bot-bubble min-w-0 ${isFullscreen ? "max-w-[85%] sm:max-w-[85%]" : "flex-1 max-w-[calc(100%-38px)]"}`
+                      }
+                      style={{ padding: '10px 14px' }}
+                    >
+                      <div className="w-full max-w-full min-w-0 space-y-4">
+                        {renderMessageContent(message)}
+                      </div>
+
+                      <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
+                        <span>{message.timestamp.toLocaleTimeString()}</span>
+                        {message.isFallback && !isCareerCoach && (
+                          <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-medium border border-amber-200">
+                            Rule-Based Fallback
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {message.type === "user" && (
+                      <div className="flex-shrink-0">
+                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#6A89A7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <User size={13} style={{ color: '#BDDDFC' }} />
                         </div>
                       </div>
                     )}
                   </div>
-                  <div ref={messagesEndRef} />
-                </ScrollArea>
+                ))}
 
-                {/* Input */}
-                <div style={{ padding: '12px 14px', borderTop: '1px solid #E6E6E6', background: '#FAFBFC' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <Input
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Ask about workforce intelligence..."
-                      style={{ flex: 1, fontSize: '13px', borderColor: '#E6E6E6', borderRadius: '8px' }}
-                      disabled={isLoading}
-                    />
-                    <button
-                      onClick={handleSendMessage}
-                      disabled={!inputMessage.trim() || isLoading}
-                      style={{ background: '#053259', color: 'white', border: 'none', borderRadius: '8px', padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!inputMessage.trim() || isLoading) ? 0.5 : 1, transition: 'opacity 0.15s, background 0.15s' }}
-                    >
-                      <Send size={14} />
-                    </button>
+                {isLoading && (
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
+                    <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(136,189,242,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Bot size={13} style={{ color: '#6A89A7' }} />
+                    </div>
+                    <div className="ai-bot-bubble" style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Loader2 size={13} style={{ color: '#6A89A7', animation: 'spin 0.8s linear infinite' }} />
+                        <span style={{ fontSize: '13px', color: '#6A89A7' }}>Analyzing workforce data...</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                )}
+              </div>
+              <div ref={messagesEndRef} />
+            </ScrollArea>
+
+            {/* Input */}
+            <div className="flex-shrink-0" style={{ padding: '12px 14px', borderTop: '1px solid #E6E6E6', background: '#FAFBFC' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Input
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask about workforce intelligence..."
+                  style={{ flex: 1, fontSize: '13px', borderColor: '#E6E6E6', borderRadius: '8px' }}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim() || isLoading}
+                  style={{ background: '#053259', color: 'white', border: 'none', borderRadius: '8px', padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!inputMessage.trim() || isLoading) ? 0.5 : 1, transition: 'opacity 0.15s, background 0.15s' }}
+                >
+                  <Send size={14} />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </>
@@ -430,7 +609,7 @@ const AIChat = ({ isFloating = false, isOpen = true, onToggle, suggestionTrigger
                           message.type === "user"
                             ? "bg-blue-600 text-white"
                             : "bg-slate-100 text-slate-900 border border-slate-200"
-                        } break-words overflow-hidden`}
+                        } break-words overflow-hidden min-w-0`}
                       >
                         {renderMessageContent(message)}
                         <div className={`text-[10px] mt-2 font-medium opacity-60 flex items-center gap-2 ${message.type === "user" ? "text-blue-100" : "text-slate-500"}`}>

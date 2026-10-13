@@ -3,9 +3,13 @@ import AIChat from "@/components/AIChat";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bot } from "lucide-react";
+import { useWorkforceData } from "@/contexts/WorkforceContext";
 
 export default function AiEmployeeAssistant() {
   const [suggestion, setSuggestion] = React.useState(null);
+  const { employees } = useWorkforceData() || {};
+  const sampleEmployeeName = employees && employees.length > 0 ? employees[0].name : null;
+  const sampleEmployeePrompt = sampleEmployeeName ? `Tell me about ${sampleEmployeeName}` : "How can we optimize team productivity?";
 
   const handleSuggest = (text) => {
     setSuggestion(text);
@@ -91,9 +95,9 @@ export default function AiEmployeeAssistant() {
                 <Button
                   variant="outline"
                   className="w-full text-left justify-start h-auto p-3 border-slate-200 hover:bg-blue-50 whitespace-normal"
-                  onClick={() => handleSuggest("Tell me about Sarah Johnson")}
+                  onClick={() => handleSuggest(sampleEmployeePrompt)}
                 >
-                  <span className="text-sm">Tell me about Sarah Johnson</span>
+                  <span className="text-sm">{sampleEmployeePrompt}</span>
                 </Button>
               </CardContent>
             </Card>
